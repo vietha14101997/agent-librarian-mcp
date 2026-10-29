@@ -17,7 +17,7 @@ def adapt_library(raw,root_id='osagent-library'):
             supersedes=[],last_indexed_revision=None,
             authority_evidence='Explicit manifest authority field: '+str(row.get('authority')) if authority!='UNKNOWN' else None)
         docs.append(Document.parse(d).to_dict())
-    result={'schema_version':1,'root_id':root_id,'documents':docs,
+    result={'schema_version':2,'root_id':root_id,'documents':docs,
         'issues':[{'code':'DISCLOSURE_RECONCILIATION_REQUIRED','reason':'Legacy manifest has no revision-bound external disclosure approvals.'}]}
     load_catalog(result)
     return result

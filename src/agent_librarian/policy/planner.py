@@ -1,10 +1,17 @@
 """Revision-bound planning only. This module has no provider execution capability."""
 from ..catalog.model import CatalogError, digest, identifier, load_catalog, relationship_issues
+import hashlib
+import json
 
-ACCEPTED={'OWNER_APPROVED','STATIC_ACCEPTED','RUNTIME_VERIFIED','PRODUCTION_INTEGRATED'}
+def policy_fingerprint(policy):
+    """Change detection only; this hash is not a signature or owner authorization."""
+    return hashlib.sha256(json.dumps(policy,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 
-def sync_plan(catalog,policy):
+def sync_plan(catalog,policy,expected_policy_sha256=None):
     docs=load_catalog(catalog)
+    fingerprint=policy_fingerprint(policy)
+    if expected_policy_sha256 is not None and fingerprint!=expected_policy_sha256:
+        raise CatalogError('POLICY_CHANGED_SINCE_REVIEW')
     keys={'schema_version','account_id','notebooks','mappings','approvals','remote_sources','prior_sync','verified_drive_revisions'}
     if not isinstance(policy,dict) or set(policy)!=keys or type(policy['schema_version']) is not int or policy['schema_version']!=1:
         raise CatalogError('SYNC_POLICY_INVALID')
@@ -41,8 +48,10 @@ def sync_plan(catalog,policy):
         drive=rows('verified_drive_revisions',doc.document_id)
         if catalog_problem:pass
         elif doc.document_kind=='UNCLASSIFIED':reason='UNSUPPORTED_DOCUMENT_TYPE'
-        elif doc.authority_status not in ACCEPTED:
-            status='BLOCKED_APPROVAL';reason='AUTHORITY_NOT_ELIGIBLE'
+        elif doc.curation_status!='ACCEPTED_FOR_RESEARCH' or doc.curation_evidence is None:
+            status='BLOCKED_APPROVAL';reason='CURATION_NOT_ACCEPTED'
+        elif doc.curation_evidence['content_sha256']!=doc.content_sha256:
+            status='BLOCKED_REVISION';reason='CURATION_REVISION_MISMATCH'
         elif doc.disclosure_status!='OWNER_APPROVED_FOR_EXTERNAL':
             status='BLOCKED_APPROVAL';reason='EXTERNAL_DISCLOSURE_NOT_APPROVED'
         elif len(approvals)!=1 or approvals[0].get('revoked') is not False:
@@ -91,4 +100,5 @@ def sync_plan(catalog,policy):
                     else:status='UPDATE_CANDIDATE';reason='EXISTING_SOURCE_NEEDS_APPROVED_REVISION'
         result.append({'document_id':doc.document_id,'action':status,'reason':reason})
     return {'execution_enabled':False,'requires_revalidation_before_future_execution':True,
-        'remote_operations':0,'plan':result}
+        'remote_operations':0,'plan':result,'trusted_authorization':False,
+        'authorization_basis':'UNTRUSTED_PLANNING_DECLARATION','policy_sha256':fingerprint}

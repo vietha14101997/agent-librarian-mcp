@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "root_id": "synthetic-example-root",
   "documents": [
     {
@@ -19,7 +19,15 @@
       "related_document_ids": [],
       "supersedes": [],
       "last_indexed_revision": "f55137aad69e79b0e2b98b6e56a041a28b6c755489be9f2ace661a56941f323f",
-      "authority_evidence": "Synthetic static acceptance; not a real owner decision"
+      "authority_evidence": "Synthetic static acceptance; not a real owner decision",
+      "curation_status": "ACCEPTED_FOR_RESEARCH",
+      "curation_evidence": {
+        "decision_id": "SYNTHETIC-CURATION-02",
+        "reviewer": "synthetic-reviewer",
+        "content_sha256": "f55137aad69e79b0e2b98b6e56a041a28b6c755489be9f2ace661a56941f323f",
+        "provenance": "Synthetic fixture curation; no real publication authority",
+        "status": "ACCEPTED_FOR_RESEARCH"
+      }
     }
   ],
   "issues": [],

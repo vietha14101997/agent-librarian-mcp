@@ -1,8 +1,10 @@
 # Security
 
-Version 0.1.0 is a local prototype with a synthetic provider. Authenticated
+Version 0.2.0 is a local prototype with synthetic providers and restricted Unix IPC. Authenticated
 integration is **BLOCKED_PENDING_ISOLATED_RUNTIME**. There is no Google login,
-cookie import, browser extraction, network listener or synchronization executor.
+cookie import, browser extraction, TCP listener or synchronization executor.
+The local Unix listener checks kernel peer identity, fixed schemas and independent
+service policy; it does not establish host isolation under the same UID.
 
 Enforced controls include fixed MCP dispatch, explicit argument validation,
 account/notebook/source allowlists, bounded queries, one provider operation at a
@@ -42,3 +44,9 @@ Before publication, report findings privately to the repository owner through an
 agreed private channel. No hosted reporting channel exists yet; choosing one is
 a release gate. Never include real cookies, tokens, browser profiles or private
 documents in an issue, test fixture, log or archive.
+
+The source-derived Gemini adapter uses injected mock transport/auth capabilities;
+it never discovers credentials. A synthetic-only store and exact known-canary
+redaction test the boundary. No live credential store implementation is supplied.
+The same-UID negative test confirms the host isolation blocker remains. See
+[owner prerequisites](docs/host-setup.md) and [IPC limitations](docs/ipc.md).

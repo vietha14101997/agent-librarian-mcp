@@ -5,10 +5,10 @@ from .common import NAMES, Rejected, load_policy, exact, ident, text, URL_PATH
 from ..providers.fake import FakeProvider
 
 class Gateway:
-    def __init__(self, policy, fixture, control_dir):
+    def __init__(self, policy, fixture, control_dir, provider=None):
         self.policy=load_policy(policy)
         self.control=Path(control_dir)
-        self.provider=FakeProvider(fixture,self.policy['timeout_seconds'],self.policy['account_id'])
+        self.provider=provider if provider is not None else FakeProvider(fixture,self.policy['timeout_seconds'],self.policy['account_id'])
         self.busy=threading.Lock()
         self.stopped=False
 
@@ -58,7 +58,9 @@ class Gateway:
         if status!='ok':raise Rejected('PROVIDER_FAILURE')
         data=raw.get('data')
         if not isinstance(data,dict):raise Rejected('PROVIDER_STRUCTURE_INVALID')
-        base=dict(status='OK',provider_status='ok',provider='SYNTHETIC_OFFLINE',
+        kind=raw.get('provider_kind','SYNTHETIC_OFFLINE')
+        if kind not in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE'}:raise Rejected('PROVIDER_STRUCTURE_INVALID')
+        base=dict(status='OK',provider_status='ok',provider=kind,
             untrusted_research_data=True,verification_limitations=['No Google operation performed.'])
         if name==NAMES[0]:
             notebooks=data.get('notebooks')

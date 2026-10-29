@@ -2,14 +2,17 @@
 
 A local Python package for deterministic document catalogs, provenance, change
 detection, disclosure-aware synchronization planning and restricted MCP research.
-The research provider is synthetic. Google Gemini Notebook is a planned adapter,
-not an operational integration. Authentication remains
-**BLOCKED_PENDING_ISOLATED_RUNTIME**.
+Version 0.2.0 adds independent research curation, safe catalog v2 migration,
+restricted Unix provider IPC and a source-derived Gemini adapter tested with a
+mock transport. Authentication remains **BLOCKED_PENDING_ISOLATED_RUNTIME**;
+host isolation is **HOST_ISOLATION_PENDING_OWNER_SETUP**. No live Google support
+is available.
 
 This project is independent development infrastructure. It is not an OSAgent
 product module or a general autonomous document-editing agent. It never uploads,
 edits or publishes documents, executes a sync plan, shares/deletes sources or
-starts a public MCP endpoint.
+starts a public MCP endpoint. Research queries may persist provider conversation
+history when a live provider is eventually introduced.
 
 ## Install locally
 
@@ -46,7 +49,7 @@ execution_enabled=false and zero remote operations. Every approval, Drive ID,
 account and notebook in examples/ is synthetic. Existing files on Drive do not
 gain retroactive approval.
 
-Without a manifest, scan discovers metadata with UNKNOWN authority/disclosure and
+Without a manifest, scan discovers metadata with UNKNOWN authority/curation/disclosure and
 UNCLASSIFIED kind. It does not infer acceptance from names or recency. Explicit
 manifests supply stable IDs; discovery-only IDs are path-based. A changed hash,
 missing file, broken relationship or unsafe path is visible as an issue. Output
@@ -105,6 +108,32 @@ not an active registration or proof of Codex-host compatibility.
 Tests use synthetic fixtures and actual CLI/MCP subprocesses. See
 [architecture](docs/architecture.md), [security](SECURITY.md),
 [contributing](CONTRIBUTING.md), and [provenance](THIRD_PARTY_NOTICES.md).
-Version 0.1.0 is an initial foundation, not a production security claim.
-Secure authenticated adapters, signed approval storage, broader platform tests,
-dependency auditing and public release approval remain open gates.
+Version 0.2.0 is a local foundation, not a production security claim. Host
+isolation, live transport/account attestation, trusted approval authority, broader
+platform tests, dependency auditing and public release approval remain open gates.
+
+## Policy v2 and synthetic provider service
+
+Authority, curation and disclosure are independent. Accepted historical/proposed
+research can become a candidate without engineering promotion. Production authority
+does not override LOCAL_ONLY disclosure. Plans are untrusted planning declarations,
+never authorization, and execution remains disabled.
+
+```sh
+.venv/bin/librarian migrate --input examples/catalog.json --output state/catalog.v2.json
+.venv/bin/python -I -B examples/service_demo.py --state-dir state/ipc-demo
+```
+
+The second command runs a synthetic credential-owning subprocess, real Unix IPC,
+the Gemini mock adapter and an SDK MCP client. Use a short state path (socket path
+maximum 100 bytes). It prints bounded results and cleans up its runtime canary.
+The service checks kernel caller UID and its own policy; the gateway sees no
+canary. The same UID can still read protected files: this demo proves application
+restrictions, not OS credential isolation. No separate security principal is
+provisioned. The original fake demo remains supported.
+
+Read [knowledge policy and migration](docs/knowledge-policy.md),
+[IPC contract](docs/ipc.md), [adapter boundaries](docs/gemini-adapter.md),
+[owner host prerequisites and revocation](docs/host-setup.md), and
+[Codex/Claude Code/Gemini CLI setup scope](docs/agent-setup.md). Only the SDK client
+is tested; no universal agent compatibility is claimed.

@@ -149,7 +149,7 @@ class GatewayTests(unittest.TestCase):
 
     def test_14_timeout(self):
         self.policy['timeout_seconds']=.2
-        start=time.monotonic();r=self.query(self.client('timeout'))
+        c=self.client('timeout');start=time.monotonic();r=self.query(c)
         self.assertEqual(r['code'],'PROVIDER_TIMEOUT_OUTCOME_UNKNOWN');self.assertEqual(r['outcome'],'UNKNOWN')
         self.assertLess(time.monotonic()-start,1.5)
 
@@ -180,7 +180,7 @@ class GatewayTests(unittest.TestCase):
     def test_20_account_mismatch_before_query(self):
         self.fixture['account_id']='wrong-account';self.policy['timeout_seconds']=.5
         # Timeout mode sleeps only after reading a request. Identity rejection occurs first.
-        start=time.monotonic();r=self.query(self.client('timeout'))
+        c=self.client('timeout');start=time.monotonic();r=self.query(c)
         self.assertEqual(r['code'],'ACCOUNT_IDENTITY_MISMATCH');self.assertLess(time.monotonic()-start,.5)
 
     def test_21_exact_four_tools(self):

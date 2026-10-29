@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
-from .catalog.model import CatalogError, strict_json
+from .catalog.model import CatalogError, strict_json, migrate_catalog
 from .catalog.operations import scan, validate, changes
 from .catalog.osagent import adapt_library
 from .policy.planner import sync_plan
@@ -35,7 +35,7 @@ def write_json(path,value,root=None):
         if os.path.exists(tmp):os.unlink(tmp)
 
 def parser():
-    p=argparse.ArgumentParser(prog='librarian',description='Local catalogs, dry-run sync planning, and fake-provider MCP. No Google authentication or sync execution.')
+    p=argparse.ArgumentParser(prog='librarian',description='Local catalogs, dry-run sync planning, and synthetic-provider MCP. No Google authentication or sync execution.')
     sub=p.add_subparsers(dest='command',required=True)
     for name in ('scan','validate'):
         c=sub.add_parser(name);c.add_argument('--root',required=True,help='Explicitly approved local document root')
@@ -45,28 +45,52 @@ def parser():
             c.add_argument('--max-file-bytes',type=int,default=2*1024*1024);c.add_argument('--max-files',type=int,default=1000)
             c.add_argument('--max-total-bytes',type=int,default=16*1024*1024)
     c=sub.add_parser('changes');c.add_argument('--previous',required=True);c.add_argument('--current',required=True);c.add_argument('--output')
-    c=sub.add_parser('sync-plan');c.add_argument('--catalog',required=True);c.add_argument('--policy',required=True);c.add_argument('--output')
+    c=sub.add_parser('sync-plan');c.add_argument('--catalog',required=True);c.add_argument('--policy',required=True);c.add_argument('--output');c.add_argument('--policy-sha256')
+    c=sub.add_parser('migrate');c.add_argument('--input',required=True);c.add_argument('--output',required=True)
     c=sub.add_parser('mcp-serve',help='Official SDK stdio transport, synthetic provider only')
-    c.add_argument('--policy');c.add_argument('--fixture');c.add_argument('--control-dir');c.add_argument('--provider',choices=('fake','google'),default='fake')
+    c.add_argument('--policy');c.add_argument('--fixture');c.add_argument('--control-dir');c.add_argument('--provider',choices=('fake','service','google'),default='fake')
+    # Service connection parameters are local startup configuration, never MCP arguments.
+    c.add_argument('--service-socket');c.add_argument('--service-uid',type=int);c.add_argument('--client-id',default='research-client')
+    c=sub.add_parser('provider-service',help='Restricted Unix service, synthetic credentials and mocked provider only')
+    c.add_argument('--socket',required=True);c.add_argument('--service-policy',required=True);c.add_argument('--fixture',required=True)
+    c.add_argument('--canary-store',required=True);c.add_argument('--allowed-uid',required=True,type=int);c.add_argument('--client-id',default='research-client')
+    c.add_argument('--adapter',choices=('fake','gemini-mock'),default='gemini-mock')
     return p
 
 def main(argv=None):
     args=parser().parse_args(argv)
     try:
+        if args.command=='provider-service':
+            from .providers.service import run_service
+            from .gateway.common import Rejected
+            try:run_service(path=args.socket,policy=args.service_policy,fixture=args.fixture,canary_store=args.canary_store,
+                allowed_uid=args.allowed_uid,client_id=args.client_id,adapter=args.adapter)
+            except Rejected as e:raise CatalogError(e.code) from None
+            return 0
         if args.command=='mcp-serve':
-            if args.provider!='fake':raise CatalogError('BLOCKED_PENDING_ISOLATED_RUNTIME')
+            if args.provider=='google':raise CatalogError('BLOCKED_PENDING_ISOLATED_RUNTIME')
             import anyio
             from .gateway.sdk import serve
             base=Path(__file__).parent
             policy=args.policy or base/'gateway/default-policy.json'
             fixture=args.fixture or base/'providers/synthetic.json'
             control=args.control_dir or Path(policy).absolute().parent
-            try:anyio.run(serve,policy,fixture,control)
+            provider=None
+            if args.provider=='service':
+                if not args.service_socket or args.service_uid is None or args.fixture:raise CatalogError('IPC_STARTUP_CONFIGURATION_INVALID')
+                from .gateway.common import load_policy
+                from .providers.ipc import IPCResearchProvider
+                config=load_policy(policy)
+                provider=IPCResearchProvider(args.service_socket,args.service_uid,args.client_id,config['account_id'],config['timeout_seconds']+1)
+            try:anyio.run(serve,policy,fixture,control,provider)
             except KeyboardInterrupt:return 0
             except CatalogError:raise
             except Exception:raise CatalogError('MCP_SERVICE_FAILURE') from None
             return 0
-        if args.command in ('scan','validate'):
+        if args.command=='migrate':
+            if Path(args.input).resolve()==Path(args.output).resolve():raise CatalogError('MIGRATION_INPUT_OVERWRITE_REJECTED')
+            result=migrate_catalog(read_json(args.input))
+        elif args.command in ('scan','validate'):
             manifest=read_json(args.manifest) if args.manifest else None
             if args.adapter=='osagent':
                 if manifest is None:raise CatalogError('MANIFEST_REQUIRED_FOR_ADAPTER')
@@ -74,7 +98,7 @@ def main(argv=None):
             if args.command=='scan':result=scan(args.root,manifest,max_file_bytes=args.max_file_bytes,max_files=args.max_files,max_total_bytes=args.max_total_bytes)
             else:result=validate(args.root,manifest)
         elif args.command=='changes':result=changes(read_json(args.previous),read_json(args.current))
-        else:result=sync_plan(read_json(args.catalog),read_json(args.policy))
+        else:result=sync_plan(read_json(args.catalog),read_json(args.policy),args.policy_sha256)
         if args.output:write_json(args.output,result,getattr(args,'root',None))
         else:print(json.dumps(result,sort_keys=True,allow_nan=False))
         return 2 if args.command=='validate' and not result['valid'] else 0

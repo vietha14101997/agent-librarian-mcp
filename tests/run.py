@@ -16,13 +16,15 @@ class Result(unittest.TextTestResult):
         super().addSuccess(test);entries.append(dict(name=test.id(),status='PASS',elapsed_ms=int((time.monotonic()-test.started)*1000)))
     def addFailure(self,test,err):super().addFailure(test,err);entries.append(dict(name=test.id(),status='FAIL'))
     def addError(self,test,err):super().addError(test,err);entries.append(dict(name=test.id(),status='ERROR'))
+    def addSkip(self,test,reason):super().addSkip(test,reason);entries.append(dict(name=test.id(),status='SKIP',reason=reason))
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--output');args=p.parse_args()
     suite=unittest.defaultTestLoader.discover(str(ROOT/'tests'),top_level_dir=str(ROOT))
     result=unittest.TextTestRunner(verbosity=2,resultclass=Result).run(suite)
-    report=dict(kind='ACTUAL_IMPLEMENTATION_TESTS',version='0.1.0',total=result.testsRun,
+    report=dict(kind='ACTUAL_IMPLEMENTATION_TESTS',version='0.2.0',total=result.testsRun,
         passed=sum(x['status']=='PASS' for x in entries),tests=entries,
+        skipped=sum(x['status']=='SKIP' for x in entries),
         google_operations=0,prior_milestone_simulations_counted=False,
         credential_isolation='NOT_ESTABLISHED_SAME_UID_LIMITATION_OPEN',
         source_sha256={str(f.relative_to(ROOT)):hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted((ROOT/'src').rglob('*.py'))})

@@ -2,7 +2,7 @@
 
 catalog/model.py defines the provider-independent Document model. Every record
 includes document_id, title, relative_path, content_sha256, source_identity,
-source_version, document_kind, authority_status, disclosure_status,
+source_version, document_kind, authority_status, curation_status, curation_evidence, disclosure_status,
 related_document_ids, supersedes and last_indexed_revision. Explicit authority
 also requires authority_evidence. Controlled enums include UNKNOWN/UNCLASSIFIED
 so discovery never invents document type, authority or disclosure approval.
@@ -15,9 +15,10 @@ across rename/move/root relocation. Unmanaged discovery uses deterministic
 root/path UUIDs: its identity is stable for repeated scans, not arbitrary renames.
 No automatic hash-based identity merge is attempted when duplicates exist.
 
-The native manifest/snapshot shape has schema_version=1, root_id and documents;
+The native manifest/snapshot shape has schema_version=2, root_id and documents;
 issues and duplicate-content groups are optional. Examples are complete fixtures.
-Scanner updates measured hash/index revision, while preserving explicit authority.
+v1 is migrated safely in memory with unknown curation. Scanner updates measured
+hash/index revision, while preserving explicit authority.
 A mismatch against a supplied manifest is retained as an issue requiring review.
 Validate does not silently erase prior scan uncertainty.
 
@@ -29,7 +30,8 @@ disclosure-reconciliation issue and does not invent source identity links for
 format adapters. A later curated manifest must resolve those gaps before planning.
 The implementation has no OSAgent runtime or repository dependency.
 
-policy/planner.py evaluates a catalog against explicit account, notebook mapping,
+policy/planner.py evaluates explicit curation acceptance independently of engineering
+authority, then checks account, notebook mapping,
 revision-bound disclosure approval, verified Drive revision, remote identity and
 prior sync records. Its output is ADD_CANDIDATE, UPDATE_CANDIDATE, UNCHANGED,
 BLOCKED_APPROVAL, BLOCKED_IDENTITY, BLOCKED_REVISION or REVIEW_REQUIRED.
@@ -53,4 +55,16 @@ adapted tests require rejection rather than the old private error-code conventio
 Research policy is independent of catalog state. No file appearing in a catalog
 automatically becomes an allowed remote source. All shipped allowlists and
 approvals are synthetic examples. Remote citation revision attestation, live
-Google adapter and secure credential service are unfinished, blocked work.
+Google transport and host-isolated credential deployment are unfinished, blocked work.
+
+providers/ipc.py connects the existing gateway to providers/service.py over a
+closed Unix protocol. Each endpoint verifies the other's kernel UID. The service
+owns a separate policy object and startup-only synthetic store; it runs the same
+strict validation independently. providers/gemini.py adapts four reviewed protocol
+layouts through an injected transport, with only gemini_mock.py supplied. Neither
+IPC nor a subprocess changes the OS principal automatically.
+
+Catalog and research policy remain independent. Plans carry a policy fingerprint
+for change detection and trusted_authorization=false. Future publication requires
+an owner authority outside agent write access; no execution capability exists.
+See knowledge-policy.md, ipc.md, gemini-adapter.md and host-setup.md for contracts.

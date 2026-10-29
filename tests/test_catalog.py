@@ -25,7 +25,9 @@ class CatalogTests(unittest.TestCase):
         self.root=self.base/'docs';self.root.mkdir();(self.root/'decision.md').write_text('Synthetic bounded queue decision.')
         self.catalog=scan(self.root);self.doc=self.catalog['documents'][0]
         self.doc.update(document_id='doc-approved',document_kind='ORIGINAL',authority_status='STATIC_ACCEPTED',
-            authority_evidence='Synthetic static review decision',disclosure_status='OWNER_APPROVED_FOR_EXTERNAL')
+            authority_evidence='Synthetic static review decision',disclosure_status='OWNER_APPROVED_FOR_EXTERNAL',
+            curation_status='ACCEPTED_FOR_RESEARCH',curation_evidence=dict(decision_id='synthetic-curation',reviewer='synthetic-reviewer',
+                content_sha256=self.doc['content_sha256'],provenance='Synthetic explicit curation decision',status='ACCEPTED_FOR_RESEARCH'))
         self.policy=dict(schema_version=1,account_id='synthetic-account',notebooks=['synthetic-notebook'],
             mappings=[dict(document_id='doc-approved',notebook_id='synthetic-notebook',drive_file_id='synthetic-drive')],
             approvals=[dict(document_id='doc-approved',content_sha256=self.doc['content_sha256'],account_id='synthetic-account',
@@ -180,7 +182,7 @@ class CatalogTests(unittest.TestCase):
         self.assertIn('SOURCE_IDENTITY_REQUIRED',[x['code'] for x in validate(self.root,self.catalog)['issues']])
     def test_45_no_automatic_authority_change(self):
         self.doc['authority_status']='DESIGN_PROPOSED';before=copy.deepcopy(self.doc)
-        scan(self.root,self.catalog);self.assertEqual(self.doc,before);self.assertEqual(self.action(),'BLOCKED_APPROVAL')
+        scan(self.root,self.catalog);self.assertEqual(self.doc,before);self.assertEqual(self.action(),'ADD_CANDIDATE')
     def test_46_supersession_cycle(self):
         second=copy.deepcopy(self.doc);second.update(document_id='second',relative_path='second.md',supersedes=['doc-approved'])
         self.doc['supersedes']=['second'];self.catalog['documents'].append(second)

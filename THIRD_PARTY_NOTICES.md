@@ -25,35 +25,48 @@ The KN-MCP-02 hand-written JSON-RPC transport was not copied into the running
 server. Official MCP SDK 2.3.0 replaces it now that an isolated compatible Python
 interpreter is available; the tested policy was retained rather than rebuilt.
 
-## Gemini Notebook upstream consulted, not vendored
+## Gemini Notebook selective source adaptation
 
 Repository: https://github.com/jacob-bd/gemini-notebook-mcp-cli
-Inspected baseline: `8ac9728ec5b128b05077e9d7c4c8bb11b5830c61` (metadata 0.15.8).
+Pinned commit: `8ac9728ec5b128b05077e9d7c4c8bb11b5830c61` (0.15.8).
+Copyright (c) 2025 Jacob Ben David; MIT notice retained below.
 
-Reviewed contracts: src/notebooklm_tools/core/notebooks.py (discovery/metadata),
-core/conversation.py and services/chat.py (query/citations), core/sources.py and
-services/sources.py (source IDs/indexed content). All paths are under the same
-src/notebooklm_tools prefix. The scoped provider contract and source-association
-semantics informed reconstruction; no executable upstream module, CLI, auth,
-profile, sharing, download or administrative subsystem is included or required.
+Local providers/gemini.py adapts protocol constants, positional response layouts
+and bounded text/citation extraction from these original paths:
 
-Upstream source remains a reference, not a runtime dependency. The full upstream
-MIT notice is retained below. No operational Gemini Notebook support is claimed.
+| Original path under src/notebooklm_tools | Adapted detail |
+|---|---|
+| core/base.py | Three read RPC identifiers and query endpoint |
+| core/notebooks.py | list_notebooks/get_notebook request parameters and row fields |
+| services/notebooks.py | Wrapped notebook metadata normalization |
+| core/conversation.py | Query parameters, wrb.fr parsing, source references and cited text |
+| core/sources.py | get_source_fulltext parameters and nested indexed-text extraction |
 
-Public advisory review on 2026-10-29 covered response-log redaction
+Local modifications: injected transport/account capability; four explicit methods;
+strict bounded schemas/identities/allowlists; safe errors; no thinking fallback,
+raw logs, tables, live HTTP envelopes or auth discovery. gemini_mock.py constructs
+synthetic source-shaped fixtures for tests, not captured Google success responses.
+No upstream executable module, unrestricted client, CLI/auth/profile subsystem,
+sharing, download or administrative helper is installed/imported.
+
+The 2026-10-29 review rechecked the five selected files against publicly fetched
+main bytes: all matched the pinned files. Repository-wide GitHub compare failed
+and remains NOT_VERIFIED. Current CHANGELOG described unreleased CI checksum/
+certificate changes and 0.15.8 signed-out/session fixes outside the adapted parsers.
+This limited review does not establish that all later security fixes are absent.
+No floating branch code was merged; re-review before any live transport.
+
+Earlier advisory review covered response-log redaction
 [GHSA-jhrc-qgxv-3c2g](https://github.com/jacob-bd/gemini-notebook-mcp-cli/security/advisories/GHSA-jhrc-qgxv-3c2g),
-authenticated HTML dump permissions
+authenticated HTML dumps
 [GHSA-747w-q55c-m74m](https://github.com/jacob-bd/gemini-notebook-mcp-cli/security/advisories/GHSA-747w-q55c-m74m),
 external binding/cleanup
 [GHSA-v558-4774-r6wq](https://github.com/jacob-bd/gemini-notebook-mcp-cli/security/advisories/GHSA-v558-4774-r6wq),
-and download path writes
+and download writes
 [GHSA-92q4-9x75-55rf](https://github.com/jacob-bd/gemini-notebook-mcp-cli/security/advisories/GHSA-92q4-9x75-55rf).
-Those upstream code paths are not vendored. This project's output projection,
-metadata-only receipts, no listener and no download feature reduce their analogous
-attack surfaces. They do not prove production security. No fix was cherry-picked.
-GitHub's compare API reported main identical to the inspected commit at review;
-this observation is not a promise about future fixes. Re-review before any real
-adapter is introduced.
+Those paths are excluded. Safe projection, no raw response logging, no TCP and no
+downloads address analogous surfaces, not production certification. Live account
+attestation and complete wire compatibility remain unverified.
 
 ### Upstream MIT notice
 

@@ -1,6 +1,7 @@
 """Provider-independent records. Authority is explicit evidence, never filename inference."""
 from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
+import copy
 import json
 from pathlib import PurePosixPath
 import re
@@ -32,6 +33,13 @@ class Disclosure(StrEnum):
     REVIEW_REQUIRED='REVIEW_REQUIRED'
     RECONCILIATION_REQUIRED='RECONCILIATION_REQUIRED'
     OWNER_APPROVED_FOR_EXTERNAL='OWNER_APPROVED_FOR_EXTERNAL'
+
+class Curation(StrEnum):
+    UNKNOWN='UNKNOWN'
+    CANDIDATE='CANDIDATE'
+    REVIEW_REQUIRED='REVIEW_REQUIRED'
+    ACCEPTED_FOR_RESEARCH='ACCEPTED_FOR_RESEARCH'
+    REJECTED='REJECTED'
 
 def relative_path(value):
     if not isinstance(value,str) or not value or '\\' in value or '\x00' in value:
@@ -79,6 +87,8 @@ class Document:
     supersedes: list[str]
     last_indexed_revision: str | None
     authority_evidence: str | None = None
+    curation_status: str = 'UNKNOWN'
+    curation_evidence: dict | None = None
 
     @classmethod
     def parse(cls,raw):
@@ -87,7 +97,7 @@ class Document:
         except TypeError:raise CatalogError('DOCUMENT_FIELDS_INVALID') from None
         identifier(d.document_id);relative_path(d.relative_path);digest(d.content_sha256)
         if not isinstance(d.title,str) or not d.title.strip() or len(d.title)>512:raise CatalogError('TITLE_INVALID')
-        try:Kind(d.document_kind);Authority(d.authority_status);Disclosure(d.disclosure_status)
+        try:Kind(d.document_kind);Authority(d.authority_status);Disclosure(d.disclosure_status);Curation(d.curation_status)
         except (ValueError,TypeError):raise CatalogError('CLASSIFICATION_INVALID') from None
         if not isinstance(d.source_identity,dict) or set(d.source_identity)-{'system','id','evidence','document_id'}:
             raise CatalogError('PROVENANCE_INVALID')
@@ -99,6 +109,15 @@ class Document:
         if d.authority_status!='UNKNOWN' and (not isinstance(d.authority_evidence,str) or not d.authority_evidence.strip()):
             raise CatalogError('AUTHORITY_EVIDENCE_REQUIRED')
         if d.authority_evidence is not None and (not isinstance(d.authority_evidence,str) or len(d.authority_evidence)>4096):raise CatalogError('AUTHORITY_EVIDENCE_INVALID')
+        evidence=d.curation_evidence
+        if evidence is not None:
+            if not isinstance(evidence,dict) or set(evidence)!={'decision_id','reviewer','content_sha256','provenance','status'}:
+                raise CatalogError('CURATION_EVIDENCE_INVALID')
+            if not all(isinstance(v,str) and 0<len(v)<=4096 for v in evidence.values()):raise CatalogError('CURATION_EVIDENCE_INVALID')
+            identifier(evidence['decision_id']);digest(evidence['content_sha256'])
+            if evidence['status']!=d.curation_status:raise CatalogError('CONFLICTING_CURATION_EVIDENCE')
+        if d.curation_status=='ACCEPTED_FOR_RESEARCH' and evidence is None:
+            raise CatalogError('CURATION_EVIDENCE_REQUIRED')
         for refs in (d.related_document_ids,d.supersedes):
             if not isinstance(refs,list) or len(refs)>1000 or len(refs)!=len(set(identifier(x) for x in refs)):
                 raise CatalogError('RELATIONSHIP_INVALID')
@@ -106,11 +125,24 @@ class Document:
 
     def to_dict(self):return asdict(self)
 
-def load_catalog(raw):
+def migrate_catalog(raw):
+    """Return a validated v2 copy. V1 gains UNKNOWN curation, never acceptance."""
     if not isinstance(raw,dict) or set(raw)-{'schema_version','root_id','documents','issues','duplicates'}:
         raise CatalogError('CATALOG_FIELDS_INVALID')
-    if type(raw.get('schema_version')) is not int or raw['schema_version']!=1 or not isinstance(raw.get('documents'),list) or len(raw['documents'])>1000:
+    if type(raw.get('schema_version')) is not int or raw['schema_version'] not in (1,2) or not isinstance(raw.get('documents'),list) or len(raw['documents'])>1000:
         raise CatalogError('CATALOG_INVALID')
+    converted=copy.deepcopy(raw)
+    for row in converted['documents']:
+        if not isinstance(row,dict):raise CatalogError('DOCUMENT_INVALID')
+        if raw['schema_version']==1:
+            if 'curation_status' in row or 'curation_evidence' in row:raise CatalogError('AMBIGUOUS_V1_CURATION')
+            row.update(curation_status='UNKNOWN',curation_evidence=None)
+        elif 'curation_status' not in row or 'curation_evidence' not in row:raise CatalogError('V2_CURATION_FIELDS_REQUIRED')
+    converted['schema_version']=2
+    _validated_documents(converted)
+    return converted
+
+def _validated_documents(raw):
     identifier(raw.get('root_id'))
     docs=[Document.parse(x) for x in raw['documents']]
     ids=[d.document_id for d in docs];paths=[d.relative_path for d in docs]
@@ -118,6 +150,8 @@ def load_catalog(raw):
     if len(set(paths))!=len(paths):raise CatalogError('DUPLICATE_DOCUMENT_PATH')
     if not isinstance(raw.get('issues',[]),list):raise CatalogError('CATALOG_INVALID')
     return docs
+
+def load_catalog(raw):return _validated_documents(migrate_catalog(raw))
 
 def relationship_issues(docs):
     known={d.document_id for d in docs};issues=[]

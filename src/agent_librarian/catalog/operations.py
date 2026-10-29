@@ -29,13 +29,15 @@ def scan(root,manifest=None,**limits):
     issues+=relationship_issues(docs)
     groups=defaultdict(list)
     for d in docs:groups[d.content_sha256].append(d.document_id)
-    return {'schema_version':1,'root_id':root_id,'documents':[d.to_dict() for d in sorted(docs,key=lambda x:x.document_id)],
+    return {'schema_version':2,'root_id':root_id,'documents':[d.to_dict() for d in sorted(docs,key=lambda x:x.document_id)],
             'issues':issues,'duplicates':[{'content_sha256':h,'document_ids':ids} for h,ids in sorted(groups.items()) if len(ids)>1]}
 
 def validate(root,catalog):
     docs=load_catalog(catalog);issues=relationship_issues(docs)
     with SafeRoot(root) as fs:
         for d in docs:
+            if d.curation_evidence and d.curation_evidence['content_sha256']!=d.content_sha256:
+                issues.append({'document_id':d.document_id,'code':'CURATION_REVISION_MISMATCH'})
             try:
                 h,_=fs.hash_file(d.relative_path)
                 if h!=d.content_sha256:issues.append({'document_id':d.document_id,'code':'HASH_MISMATCH'})
