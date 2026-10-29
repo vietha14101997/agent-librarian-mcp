@@ -6,7 +6,9 @@ from pathlib import Path
 from .gateway.common import Rejected, ident
 from .personal.state import private_dir, read_private, write_private
 
-DEFAULT_HOME = Path.home() / 'Library/Application Support/AgentLibrarian/installation'
+from .locations import installation_home
+
+DEFAULT_HOME = installation_home()
 
 
 def project_path(project):
@@ -51,7 +53,7 @@ class ProjectMappings:
                 return {'status': 'MAPPED', 'project': str(path), 'mapping_project': str(candidate),
                         **data[str(candidate)]}
         return {'status': 'PROJECT_NOT_MAPPED', 'project': str(path), 'notebook_ids': [],
-                'action': 'Run librarian setup map --project PROJECT --notebook-id DISCOVERED_ID.'}
+                'action': 'Run librarian setup onboard --project PROJECT to choose existing, new, or skip.'}
 
     @contextmanager
     def lock(self):

@@ -110,6 +110,49 @@ def codex_probe(binary, root, project, expected):
         probe.close()
 
 
+
+def generic_probe(interpreter, root, projects, state):
+    """Exercise the packaged neutral contract with no IDE/client configuration."""
+    import anyio
+    from mcp import Client, StdioServerParameters
+    home = root/'generic-home'
+    def cli(project, action, *extra):
+        result = subprocess.run([interpreter, '-I', '-B', '-m', 'agent_librarian', 'setup', action,
+            '--project', str(project), '--home', str(home), '--state-dir', str(state.path), *extra],
+            capture_output=True, text=True, check=True, timeout=10)
+        return json.loads(result.stdout)
+    contract = cli(projects[0], 'contract')
+    assert contract['transport'] == 'stdio' and contract['tools'] == list(NAMES)
+    assert Path(contract['skill_source']).is_file()
+    assert not home.exists()
+    assert cli(projects[0], 'onboard')['status'] == 'CHOICE_REQUIRED'
+    assert cli(projects[0], 'onboard', '--choice', 'skip')['status'] == 'SKIPPED'
+    assert not home.exists()
+    selection = cli(projects[0], 'onboard', '--choice', 'existing')
+    assert selection['status'] == 'NOTEBOOK_SELECTION_REQUIRED'
+    assert not home.exists(), 'inventory listing must not select or install'
+    mapped = cli(projects[0], 'onboard', '--choice', 'existing', '--approve',
+                 '--account-id', selection['account_id'], '--notebook-id', 'notebook-second')
+    assert mapped['mapping_verified'] and mapped['notebook_id'] == 'notebook-second'
+    assert cli(projects[0], 'onboard')['reused']
+    async def run():
+        for project, expected in ((projects[0], 'notebook-second'), (projects[2], None)):
+            descriptor = cli(project, 'contract')
+            async with Client(StdioServerParameters(command=descriptor['command'], args=descriptor['args'])) as client:
+                assert {tool.name for tool in (await client.list_tools()).tools} == set(NAMES)
+                value = (await client.call_tool(NAMES[0], {})).structured_content
+                if expected:
+                    assert value['project'] == str(project)
+                    assert [book['notebook_id'] for book in value['notebooks']] == [expected]
+                else:
+                    assert value['code'] == 'PROJECT_NOT_MAPPED'
+    anyio.run(run)
+    return {'neutral_contract': True, 'no_agent_registration_required': True,
+            'explicit_owner_selection_verified': True, 'skip_without_changes': True,
+            'packaged_sdk_stdio_four_tools': True, 'unmapped_denied': True,
+            'google_operations': 0}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--wheel', required=True)
@@ -118,7 +161,7 @@ def main():
     args = parser.parse_args()
     wheel = Path(args.wheel).resolve()
     (ROOT/'state').mkdir(exist_ok=True)
-    report = {'milestone': 'KN-OSS-05', 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
+    report = {'milestone': 'PORTABLE_ONBOARDING', 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
               'google_operations': 0, 'live_research_queries': 0, 'credentials': 'SYNTHETIC_METADATA_ONLY',
               'owner_configuration_changed': False}
     with tempfile.TemporaryDirectory(prefix='kn05-', dir=ROOT/'state') as temporary:
@@ -148,6 +191,7 @@ def main():
             for nb, source in [('notebook-approved', 'source-approved'), ('notebook-second', 'source-second')]]})
         write_private(state.path/CONNECTION, {'status': 'BROWSER_DISCOVERY_VERIFIED', 'account_id': config['account_id'],
             'origin': 'https://notebook.google.com', 'window_id': '1', 'tab_id': '2'})
+        report['generic_package_acceptance'] = generic_probe(interpreter, root, projects, state)
         maps = ProjectMappings(install.home)
         maps.change(projects[0], ['notebook-approved']); maps.change(projects[1], ['notebook-second'])
         assert install.status(projects[0])['status'] == 'HEALTHY_OFFLINE'

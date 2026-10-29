@@ -10,7 +10,9 @@ import tempfile
 import uuid
 from ..gateway.common import Rejected,strict_json
 
-DEFAULT_STATE=Path.home()/'Library/Application Support/AgentLibrarian/personal-local'
+from ..locations import personal_state
+
+DEFAULT_STATE=personal_state()
 
 def private_dir(path,create=False):
     p=Path(path).absolute()

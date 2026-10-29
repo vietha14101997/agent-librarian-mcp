@@ -28,7 +28,7 @@ HISTORICAL_REFERENCE maps to HISTORICAL; unrecognized authority remains UNKNOWN.
 Missing disclosure information is always UNKNOWN. The adapter adds a global
 disclosure-reconciliation issue and does not invent source identity links for
 format adapters. A later curated manifest must resolve those gaps before planning.
-The implementation has no OSAgent runtime or repository dependency.
+The optional adapter has no dependency on the originating project runtime or repository.
 
 policy/planner.py evaluates explicit curation acceptance independently of engineering
 authority, then checks account, notebook mapping,
@@ -37,7 +37,7 @@ prior sync records. Its output is ADD_CANDIDATE, UPDATE_CANDIDATE, UNCHANGED,
 BLOCKED_APPROVAL, BLOCKED_IDENTITY, BLOCKED_REVISION or REVIEW_REQUIRED.
 execution_enabled is always false. Existing remote presence is not approval.
 Unknown outcomes, stale registries and duplicate identities never mean success.
-No delete, public sharing, publication, daemon or mutation executor exists.
+Catalog plans have no execution path. Notebook onboarding is a separate explicit CLI operation.
 
 providers/base.py defines a closed ResearchProvider and a future read-only remote
 inventory contract. providers/fake.py implements four fixed synthetic operations
@@ -85,3 +85,11 @@ selection and finite query permits. It imports no privileged deployment machiner
 The runtime is credential-store agnostic; the supported login method uses a private
 Playwright pipe to an owned managed profile. The advanced protected runtime remains
 separate. Current-user trust and host isolation are deliberately distinct profiles.
+
+Version 0.6.0 adds a neutral stdio/Skill installation contract and agent-driven
+project onboarding. projects.py retains nearest-ancestor allowlists; onboarding.py
+reuses valid mappings, requires explicit inventory selection, and records approved
+experimental creation before dispatch. personal/notebook_admin.py and
+brave_create.js form a separate closed discovery/create CLI path. The research
+gateway and brave_rpc.js do not expose creation. Default creation is manual until
+a successful separately authorized live test establishes browser-backed reliability.

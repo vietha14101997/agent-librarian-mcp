@@ -21,8 +21,7 @@ Normal product use does not require manual DevTools execution.
 The current pilot also requires the previously protected Agent Librarian Keychain
 session as its account-identity binding. Native RPC does not replay those cookies.
 First-install account bootstrap without that historical session is still pending;
-do not present this pilot as a complete public Connect flow. Extension/native
-messaging remains the preferred future public architecture to evaluate.
+do not present this pilot as a complete public Connect flow. Use the documented manual connection fallback when that binding is unavailable.
 
 State lives under `~/Library/Application Support/AgentLibrarian/personal-local/`,
 with user-only permissions, outside Git. There is no plaintext credential fallback,

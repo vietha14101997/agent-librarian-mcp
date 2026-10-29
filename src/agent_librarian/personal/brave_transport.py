@@ -76,6 +76,10 @@ return String(t.execute({javascript:%s}));
     def request(self,r):
         if self.closed or self.disabled():raise Rejected('SERVICE_DISABLED')
         GeminiHTTPS._allowed(self,r) # Shared closed operation/argument contract.
+        return self._request(r)
+    def _request(self,r):
+        # Shared bounded single dispatch; CLI administration supplies its own closed contract.
+        if self.closed or self.disabled():raise Rejected('SERVICE_DISABLED')
         rid=uuid.uuid4().hex;self.reqid+=100000;dispatched=False;done=False
         try:
             start=self._execute({'action':'start','id':rid,'expected_email':self.expected_email,

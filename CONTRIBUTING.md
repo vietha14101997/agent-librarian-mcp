@@ -1,6 +1,7 @@
 # Contributing
 
-Use Python 3.11+ and the committed uv.lock. With uv installed:
+Use Python 3.11+ and the committed uv.lock. Node.js optionally runs the synthetic
+browser-JavaScript contract test; no Node.js runtime is needed for installation. With uv installed:
 
 ```sh
 uv sync --locked --python 3.12
@@ -29,7 +30,7 @@ security audit.
 Use semantic versions while keeping pre-1.0 schema/contract changes explicit.
 Before a public release, establish maintainer/security contacts, license review,
 dependency auditing, supported-platform CI and a reproducible build process.
-This initial repository has no remote or publication workflow. Release/tag/push
+The public repository does not automatically publish releases. Release/tag/push
 operations require a separate owner decision.
 
 Build wheels only from a clean source snapshot; flit includes package data. Inspect

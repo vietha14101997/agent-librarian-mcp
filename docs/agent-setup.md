@@ -1,30 +1,19 @@
-# MCP agent setup
+# MCP and Skill setup for agents
 
-Codex is the first supported client for the install-once Personal Local Skill and
-project-aware MCP registration. The KN-OSS-05 package acceptance script verifies
-fresh ephemeral Codex discovery and all four tools using synthetic cached state,
-without model turns, authentication or Google requests. See the
-[installation guide](skill-installation.md). The official Python MCP SDK 2.3.0
-stdio client is also covered by regression tests.
+Follow the [portable installation contract](skill-installation.md). Discover your
+host's native MCP/Skill conventions; no particular agent, IDE or model is required.
+`librarian setup contract --project PROJECT` emits an absolute stdio command and
+argument array plus the packaged Skill location, without changing configuration.
+Register in your host, discover exactly four research tools, then verify the
+project identity and effective mapping. Unmapped projects remain denied.
 
-Claude Code, Gemini CLI and other MCP hosts remain unverified. They can reuse the
-provider-neutral mapping resolver and runtime, but need a separately verified
-Skill/MCP registration adapter. The advanced restricted-service template below
-is separate from the ordinary Personal Local installer.
+The official Python MCP SDK stdio client is covered by regression tests. The
+optional Codex receipt adapter also has isolated package acceptance. Other host
+registrations require their own verification; the neutral contract is reusable
+without claiming all clients have been tested.
 
-All hosts should launch the same absolute command with an argument array:
-
-```text
-/ABS/venv/bin/librarian mcp-serve --provider service
-  --policy /ABS/front-policy.json --service-socket /SHORT/service/research.sock
-  --service-uid SERVICE_NUMERIC_UID --client-id research-client
-  --control-dir /ABS/front-control
-```
-
-This is a command/argument template, not shell code or a host configuration file.
-Do not pass a canary store, authentication profile or credentials to the gateway.
-Use the fake provider demo for development; use gemini-mock service only for
-synthetic IPC testing. examples/codex.disabled.toml remains a disabled illustrative
-configuration, not registration or a compatibility claim. Enable a server only
-after reviewing its four-tool registry and deployment boundaries. MCP host tool
-approval does not isolate credentials from an agent that can run shell commands.
+The optional restricted service/deployment profile is separate from ordinary
+Personal Local installation. Its disabled examples require dynamically selected
+absolute paths and independently determined identity values. Never pass canary
+stores or authentication credentials to research MCP. See [IPC](ipc.md) and
+[host setup](host-setup.md) only if deploying that advanced profile.

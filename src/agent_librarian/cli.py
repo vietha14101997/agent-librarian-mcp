@@ -52,7 +52,7 @@ def parser():
     # Service connection parameters are local startup configuration, never MCP arguments.
     c.add_argument('--state-dir');c.add_argument('--project',default='.');c.add_argument('--installation-home');c.add_argument('--service-socket');c.add_argument('--service-uid',type=int);c.add_argument('--client-id',default='research-client')
     c=sub.add_parser('setup',help='Install once, map projects and manage the shared Skill/MCP runtime')
-    c.add_argument('setup_action',choices=('install','status','doctor','plan','map','unmap','repair','update','uninstall'))
+    c.add_argument('setup_action',choices=('install','status','doctor','plan','contract','onboard','map','unmap','repair','update','uninstall'))
     c.add_argument('--project',default='.');c.add_argument('--state-dir')
     c.add_argument('--home',help='User-local installation receipt and mappings directory')
     c.add_argument('--codex-home',help='Codex configuration directory')
@@ -62,6 +62,14 @@ def parser():
     c.add_argument('--runtime-python',help='Reuse an existing persistent compatible runtime')
     c.add_argument('--dry-run',action='store_true',help='Preview without writing any files')
     c.add_argument('--adopt-existing',action='store_true',help='Back up and migrate the existing Agent Librarian entry/Skill only')
+    c.add_argument('--choice',choices=('existing','new','skip','recover'),help='Explicit onboarding choice; omitted returns a question for the agent')
+    c.add_argument('--approve',action='store_true',help='Records the owner explicit approval of this selection or creation')
+    c.add_argument('--discover',action='store_true',help='Owner consent to refresh current-account notebook inventory')
+    c.add_argument('--title',help='Owner-confirmed new notebook title')
+    c.add_argument('--account-id',help='Confirm the account binding returned by onboarding')
+    c.add_argument('--account-email',help='Confirm the Google account shown in the creation proposal')
+    c.add_argument('--operation-id',help='Use the ID returned in the creation proposal')
+    c.add_argument('--experimental-browser-create',action='store_true',help='Explicitly opt into live-unverified creation; default is manual creation')
     c=sub.add_parser('auth',help='Explicit Personal Local Brave login and Keychain session')
     auth=c.add_subparsers(dest='auth_action',required=True)
     for action in ('login','status','logout'):
@@ -102,7 +110,21 @@ def main(argv=None):
             from .gateway.common import Rejected
             try:
                 home=args.home or DEFAULT_HOME
-                if args.setup_action in ('map','unmap'):
+                if args.setup_action in ('contract','onboard'):
+                    from .onboarding import Onboarding, registration_contract
+                    from .personal.state import DEFAULT_STATE
+                    state_dir=args.state_dir or DEFAULT_STATE
+                    if args.setup_action=='contract':
+                        result=registration_contract(args.project,home,state_dir)
+                    else:
+                        if args.notebook_id and len(args.notebook_id)!=1:
+                            raise Rejected('EXPLICIT_SINGLE_NOTEBOOK_SELECTION_REQUIRED')
+                        result=Onboarding(args.project,home,state_dir).run(choice=args.choice,
+                            notebook_id=args.notebook_id[0] if args.notebook_id else None,
+                            approve=args.approve,discover=args.discover,title=args.title,
+                            account_id=args.account_id,account_email=args.account_email,operation_id=args.operation_id,
+                            experimental_browser_create=args.experimental_browser_create,dry_run=args.dry_run)
+                elif args.setup_action in ('map','unmap'):
                     if args.setup_action=='map' and not args.notebook_id:
                         raise Rejected('NOTEBOOK_ID_REQUIRED: use notebooks list, then map --notebook-id ID')
                     result=ProjectMappings(home).change(args.project,args.notebook_id if args.setup_action=='map' else None,args.dry_run)

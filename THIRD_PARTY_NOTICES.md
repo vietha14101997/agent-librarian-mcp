@@ -226,3 +226,16 @@ account check and existing four-operation request validation. It keeps page toke
 in the browser and returns only bounded RPC data. The optional metadata decoder
 and streamed-query framing likewise follow the reviewed notebook/conversation
 layouts. No unrestricted upstream runtime or browser debugger is installed.
+
+## CLI-only experimental notebook creation
+
+personal/notebook_admin.py adapts the create parameters and returned ID layout from
+upstream core/notebooks.py:create_notebook, and the CCqFvf identifier from
+core/base.py, at the same pinned commit
+`8ac9728ec5b128b05077e9d7c4c8bb11b5830c61` of
+https://github.com/jacob-bd/gemini-notebook-mcp-cli. The MIT notice above applies.
+personal/brave_create.js reuses the attributed native fetch program with a separate
+closed discovery/create contract. No upstream retry, account switching or auth
+recovery is included. Research MCP and its browser program retain their four-tool
+read/research restriction. Creation is not live-verified; normal onboarding offers
+manual creation and explicit ID linking.

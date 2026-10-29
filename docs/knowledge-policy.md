@@ -31,9 +31,9 @@ v2 requires both fields. Unknown classifications and conflicting evidence fail.
 ```
 
 The input is never overwritten by migration. Scan emits v2; changes and validate
-accept both versions. The OSAgent adapter emits v2 with unknown curation and
+accept both versions. The optional legacy manifest adapter emits v2 with unknown curation and
 unknown disclosure requiring reconciliation. It does not modify the source
-manifest or the real Library.
+manifest or the source collection.
 
 ## Planning declarations and future authorization
 
