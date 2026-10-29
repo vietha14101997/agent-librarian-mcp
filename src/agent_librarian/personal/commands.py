@@ -52,6 +52,22 @@ def dispatch(args):
         if args.notebook_action=='select':return state.select(args.notebook_id)
         return {'status':'OK','origin':'CACHED_OWNER_APPROVED_DISCOVERY',
             'notebooks':[{'notebook_id':b['notebook_id'],'title':b['title']} for b in state.inventory()['notebooks']]}
+    if getattr(args,'project',None):
+        from ..projects import ProjectMappings,DEFAULT_HOME
+        from ..project_runtime import ProjectGateway
+        home=getattr(args,'installation_home',None) or DEFAULT_HOME
+        mapping=ProjectMappings(home).resolve(args.project)
+        if mapping['status']!='MAPPED':raise Rejected('PROJECT_NOT_MAPPED')
+        nb=args.notebook_id
+        if nb is None and len(mapping['notebook_ids'])==1:nb=mapping['notebook_ids'][0]
+        if nb not in mapping['notebook_ids']:raise Rejected('MAPPED_NOTEBOOK_SELECTION_REQUIRED')
+        if args.research_action=='approve':return state.approve_query(args.question,args.ack_history,nb)
+        arguments={'notebook_id':nb}
+        if args.research_action=='query':arguments['query']=args.question;name=NAMES[2]
+        elif args.research_action=='source':arguments['source_id']=args.source_id;name=NAMES[3]
+        else:name=NAMES[1]
+        return ProjectGateway(args.project,home,path).call(name,arguments)
+    if getattr(args,'notebook_id',None):raise Rejected('PROJECT_REQUIRED_WITH_NOTEBOOK_ID')
     if args.research_action=='approve':return state.approve_query(args.question,args.ack_history)
     book=state.load()['selected_notebook']
     if not book:raise Rejected('NOTEBOOK_SELECTION_REQUIRED')

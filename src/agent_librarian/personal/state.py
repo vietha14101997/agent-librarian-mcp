@@ -83,16 +83,20 @@ class PersonalState:
             if len(matches)!=1:raise Rejected('NOTEBOOK_NOT_DISCOVERED')
             c.update(selected_notebook=matches[0],generation=c['generation']+1,query_permit=None);self.save(c)
             return {'status':'OK','selected_notebook_id':notebook_id,'source_count':len(matches[0]['sources'])}
-    def approve_query(self,question,ack_history):
+    def approve_query(self,question,ack_history,notebook_id=None):
         if not ack_history:raise Rejected('QUERY_HISTORY_ACK_REQUIRED')
         if not isinstance(question,str) or not question.strip() or len(question)>2000:raise Rejected('QUERY_INVALID')
         with self.lock():
             c=self.load()
-            if not c['authenticated'] or not c['selected_notebook']:raise Rejected('NOTEBOOK_SELECTION_REQUIRED')
+            if not c['authenticated']:raise Rejected('AUTHENTICATION_REQUIRED')
+            if notebook_id is None:
+                if not c['selected_notebook']:raise Rejected('NOTEBOOK_SELECTION_REQUIRED')
+                notebook_id=c['selected_notebook']['notebook_id']
+            if notebook_id not in {b['notebook_id'] for b in self.inventory()['notebooks']}:raise Rejected('NOTEBOOK_NOT_DISCOVERED')
             c['query_permit']={'question_sha256':hashlib.sha256(question.encode()).hexdigest(),
-                'notebook_id':c['selected_notebook']['notebook_id'],'state':'APPROVED','history_acknowledged':True}
+                'notebook_id':notebook_id,'state':'APPROVED','history_acknowledged':True}
             self.save(c)
-        return {'status':'APPROVED_ONE_QUERY','notebook_id':c['selected_notebook']['notebook_id'],'question_sha256':c['query_permit']['question_sha256']}
+        return {'status':'APPROVED_ONE_QUERY','notebook_id':notebook_id,'question_sha256':c['query_permit']['question_sha256']}
     def consume_query(self,notebook_id,question):
         with self.lock():
             c=self.load();p=c['query_permit']

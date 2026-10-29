@@ -22,7 +22,7 @@ if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--output');args=p.parse_args()
     suite=unittest.defaultTestLoader.discover(str(ROOT/'tests'),top_level_dir=str(ROOT))
     result=unittest.TextTestRunner(verbosity=2,resultclass=Result).run(suite)
-    report=dict(kind='ACTUAL_IMPLEMENTATION_TESTS',version='0.4.0',total=result.testsRun,
+    report=dict(kind='ACTUAL_IMPLEMENTATION_TESTS',version='0.5.0',total=result.testsRun,
         passed=sum(x['status']=='PASS' for x in entries),tests=entries,
         skipped=sum(x['status']=='SKIP' for x in entries),
         google_operations=0,prior_milestone_simulations_counted=False,

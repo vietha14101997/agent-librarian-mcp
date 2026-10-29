@@ -1,10 +1,16 @@
 # MCP agent setup
 
-The tested client is the official Python MCP SDK 2.3.0 over stdio, on this macOS
-host. Codex, Claude Code, Gemini CLI and other MCP hosts are intended clients;
-no host-specific interoperability has been verified. Their configuration formats
-and security semantics must be checked against their current official documentation
-before registration. This milestone changes no active host configuration.
+Codex is the first supported client for the install-once Personal Local Skill and
+project-aware MCP registration. The KN-OSS-05 package acceptance script verifies
+fresh ephemeral Codex discovery and all four tools using synthetic cached state,
+without model turns, authentication or Google requests. See the
+[installation guide](skill-installation.md). The official Python MCP SDK 2.3.0
+stdio client is also covered by regression tests.
+
+Claude Code, Gemini CLI and other MCP hosts remain unverified. They can reuse the
+provider-neutral mapping resolver and runtime, but need a separately verified
+Skill/MCP registration adapter. The advanced restricted-service template below
+is separate from the ordinary Personal Local installer.
 
 All hosts should launch the same absolute command with an argument array:
 

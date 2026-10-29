@@ -47,12 +47,21 @@ def parser():
     c=sub.add_parser('changes');c.add_argument('--previous',required=True);c.add_argument('--current',required=True);c.add_argument('--output')
     c=sub.add_parser('sync-plan');c.add_argument('--catalog',required=True);c.add_argument('--policy',required=True);c.add_argument('--output');c.add_argument('--policy-sha256')
     c=sub.add_parser('migrate');c.add_argument('--input',required=True);c.add_argument('--output',required=True)
-    c=sub.add_parser('mcp-serve',help='Official SDK stdio transport, synthetic provider only')
-    c.add_argument('--policy');c.add_argument('--fixture');c.add_argument('--control-dir');c.add_argument('--provider',choices=('fake','service','personal','google'),default='fake')
+    c=sub.add_parser('mcp-serve',help='Four-tool MCP stdio server; project mappings or explicit provider configuration')
+    c.add_argument('--policy');c.add_argument('--fixture');c.add_argument('--control-dir');c.add_argument('--provider',choices=('fake','service','personal','project','google'),default='fake')
     # Service connection parameters are local startup configuration, never MCP arguments.
-    c.add_argument('--state-dir');c.add_argument('--service-socket');c.add_argument('--service-uid',type=int);c.add_argument('--client-id',default='research-client')
-    c=sub.add_parser('setup',help='Read-only persistent runtime/Skill status and installation plan')
-    c.add_argument('setup_action',choices=('status','plan'));c.add_argument('--project',default='.');c.add_argument('--state-dir')
+    c.add_argument('--state-dir');c.add_argument('--project',default='.');c.add_argument('--installation-home');c.add_argument('--service-socket');c.add_argument('--service-uid',type=int);c.add_argument('--client-id',default='research-client')
+    c=sub.add_parser('setup',help='Install once, map projects and manage the shared Skill/MCP runtime')
+    c.add_argument('setup_action',choices=('install','status','doctor','plan','map','unmap','repair','update','uninstall'))
+    c.add_argument('--project',default='.');c.add_argument('--state-dir')
+    c.add_argument('--home',help='User-local installation receipt and mappings directory')
+    c.add_argument('--codex-home',help='Codex configuration directory')
+    c.add_argument('--skills-home',help='User Agent Skills directory')
+    c.add_argument('--notebook-id',action='append',help='Repeat for multiple notebooks; map replaces the project allowlist')
+    c.add_argument('--wheel',help='Provision a shared runtime from this local wheel, using uv')
+    c.add_argument('--runtime-python',help='Reuse an existing persistent compatible runtime')
+    c.add_argument('--dry-run',action='store_true',help='Preview without writing any files')
+    c.add_argument('--adopt-existing',action='store_true',help='Back up and migrate the existing Agent Librarian entry/Skill only')
     c=sub.add_parser('auth',help='Explicit Personal Local Brave login and Keychain session')
     auth=c.add_subparsers(dest='auth_action',required=True)
     for action in ('login','status','logout'):
@@ -72,7 +81,7 @@ def parser():
     c=sub.add_parser('research',help='Four restricted Personal Local operations')
     research=c.add_subparsers(dest='research_action',required=True)
     for action in ('approve','query','notebook','source'):
-        a=research.add_parser(action);a.add_argument('--state-dir')
+        a=research.add_parser(action);a.add_argument('--state-dir');a.add_argument('--project');a.add_argument('--installation-home');a.add_argument('--notebook-id')
         if action in ('approve','query'):a.add_argument('--question',required=True)
         if action=='approve':a.add_argument('--ack-history',action='store_true')
         if action=='source':a.add_argument('--source-id',required=True)
@@ -88,13 +97,38 @@ def main(argv=None):
     args=parser().parse_args(argv)
     try:
         if args.command=='setup':
-            from .personal.setup import inspect,plan
+            from .installation import Installation
+            from .projects import DEFAULT_HOME,ProjectMappings
             from .gateway.common import Rejected
             try:
-                from .personal.state import DEFAULT_STATE
-                result=inspect(args.project,args.state_dir or DEFAULT_STATE) if args.setup_action=='status' else plan(args.project,args.state_dir or DEFAULT_STATE)
+                home=args.home or DEFAULT_HOME
+                if args.setup_action in ('map','unmap'):
+                    if args.setup_action=='map' and not args.notebook_id:
+                        raise Rejected('NOTEBOOK_ID_REQUIRED: use notebooks list, then map --notebook-id ID')
+                    result=ProjectMappings(home).change(args.project,args.notebook_id if args.setup_action=='map' else None,args.dry_run)
+                else:
+                    install=Installation(home,args.codex_home,args.skills_home,args.state_dir)
+                    if args.setup_action in ('install','repair','update','plan'):
+                        if args.setup_action=='update' and not (args.wheel or args.runtime_python):
+                            raise Rejected('UPDATE_TARGET_REQUIRED: provide --wheel PATH or --runtime-python PATH')
+                        result=install.install(wheel=args.wheel,runtime_python=args.runtime_python,
+                            dry_run=args.dry_run or args.setup_action=='plan',repair=args.setup_action in ('repair','update'),
+                            adopt_existing=args.adopt_existing)
+                    elif args.setup_action=='uninstall':result=install.uninstall(args.dry_run)
+                    else:
+                        result=install.status(args.project)
+                        # Legacy local status fields remain available to existing clients.
+                        from .personal.setup import inspect
+                        try:
+                            legacy=inspect(args.project,args.state_dir or install.state_dir)
+                            for key,value in legacy.items():result.setdefault(key,value)
+                        except (Rejected,OSError) as error:
+                            result['legacy_status_error']=getattr(error,'code','PERSONAL_CONFIGURATION_UNAVAILABLE')
+                        result['skill_present']=any(c['check']=='SKILL.md' and c['ok'] for c in result['checks']) or result.get('skill_present',False)
+                        result['project_mapping_present']=result['mapping']['status']=='MAPPED'
+                        result['mcp_configuration_verified']=any(c['check']=='mcp_registration' and c['ok'] for c in result['checks'])
             except Rejected as e:raise CatalogError(e.code) from None
-            print(json.dumps(result));return 0
+            print(json.dumps(result));return 2 if args.setup_action=='doctor' and result['status']=='NEEDS_ATTENTION' else 0
         if args.command in ('auth','notebooks','research','browser'):
             from .personal.commands import dispatch
             from .gateway.common import Rejected
@@ -129,6 +163,16 @@ def main(argv=None):
             fixture=args.fixture or base/'providers/synthetic.json'
             control=args.control_dir or Path(policy).absolute().parent
             provider=None
+            if args.provider=='project':
+                if any((args.policy,args.fixture,args.service_socket,args.service_uid is not None,args.control_dir)):
+                    raise CatalogError('PROJECT_STARTUP_CONFIGURATION_INVALID')
+                from .project_runtime import ProjectGateway
+                from .projects import DEFAULT_HOME,project_path
+                from .personal.state import DEFAULT_STATE
+                gateway=ProjectGateway(project_path(args.project),args.installation_home or DEFAULT_HOME,args.state_dir or DEFAULT_STATE)
+                try:anyio.run(serve,None,None,None,None,gateway)
+                except KeyboardInterrupt:return 0
+                return 0
             if args.provider=='personal':
                 if any((args.policy,args.fixture,args.service_socket,args.service_uid is not None,args.control_dir)):raise CatalogError('PERSONAL_STARTUP_CONFIGURATION_INVALID')
                 from .personal.state import PersonalState,DEFAULT_STATE

@@ -1,5 +1,12 @@
 # Agent Librarian MCP
 
+Version 0.5.0 provides an install-once Agent Skill, shared runtime/MCP registration,
+user-local project notebook mappings and install/status/doctor/map/unmap/repair/
+update/uninstall commands. Start with `./scripts/install.sh --dry-run`, then
+`./scripts/install.sh`. See the [installation and usage guide](docs/skill-installation.md).
+Existing Brave/Keychain state is preserved. Unmapped projects have no research access.
+Drive synchronization, automatic upload and source refresh are outside the active roadmap.
+
 [Personal Local workflow](docs/personal-local.md) describes the opt-in macOS
 Brave native transport. The controlled pilot completed real notebook discovery,
 an MCP research query and three cited-source reads using the existing browser
@@ -196,8 +203,8 @@ binding. No broader cookie access was needed for the native path.
 
 The provider-agnostic `.agents/skills/agent-librarian/SKILL.md` and read-only
 `librarian setup status` / `setup plan` support persistent discovery. A separately approved
-user-level Skill/runtime/MCP activation and fresh Codex health check passed. Full project
-mapping, idempotent repair/update/uninstall and other-client adapters remain in the
-[installation contract](docs/skill-installation.md). One restricted user MCP entry was added while preserving unrelated settings.
+user-level Skill/runtime/MCP activation and fresh Codex health check passed. KN-OSS-05 adds project
+mapping and idempotent install/repair/update/uninstall in the
+[installation guide](docs/skill-installation.md); other-client adapters remain unverified. One restricted user MCP entry was added while preserving unrelated settings.
 Extension/native messaging remains a future public Connect option;
 the scoped cookie bridge is a historical personal pilot, not the public default.

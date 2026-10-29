@@ -52,7 +52,7 @@ def ident(value):
     return value
 
 def load_policy(path):
-    raw = strict_json(Path(path).read_text())
+    raw = path if isinstance(path,dict) else strict_json(Path(path).read_text())
     exact(raw, ('version','enabled','account_id','notebooks','query_max_chars','timeout_seconds'))
     if raw['version'] != 1 or type(raw['enabled']) is not bool:
         raise Rejected('POLICY_INVALID')
@@ -80,7 +80,7 @@ def schema(properties, required=()):
 
 ID_SCHEMA = dict(type='string',pattern=ID.pattern,maxLength=128,minLength=1)
 TOOLS = [
-    dict(name=NAMES[0],description='List locally approved notebooks. Offline synthetic provider in this build.',
+    dict(name=NAMES[0],description='List notebooks allowed for this project; discovery does not grant research access.',
          inputSchema=schema({}), annotations=dict(readOnlyHint=True,destructiveHint=False,openWorldHint=False)),
     dict(name=NAMES[1],description='Get an approved notebook and its approved source identities.',
          inputSchema=schema({'notebook_id':ID_SCHEMA},('notebook_id',)),

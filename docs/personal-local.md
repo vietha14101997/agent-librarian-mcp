@@ -3,8 +3,9 @@
 KN-OSS-04 completed real notebook discovery, one successful MCP research query and
 three cited-source reads through the selected existing Brave Notebook session.
 The four-tool gateway is unchanged. Separately approved user-level Skill/runtime/MCP activation and a fresh Codex
-health check also passed, without Google requests. General project installation
-and mapping remain follow-up work. This is a macOS personal pilot, not a
+health check also passed, without Google requests. KN-OSS-05 adds shared installation and user-local project mappings; see
+[installation and usage](skill-installation.md). The legacy single-notebook commands
+below remain available explicitly, while new installations use the mapped provider. This is a macOS personal pilot, not a
 public cross-platform authentication design.
 
 ## Existing browser connection

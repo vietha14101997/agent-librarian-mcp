@@ -1,4 +1,4 @@
-"""Read-only deterministic installation status/plan; never mutates a project."""
+"""Legacy read-only project artifact inspection; user lifecycle lives in installation.py."""
 from importlib.metadata import version,PackageNotFoundError
 import json
 from pathlib import Path
@@ -26,7 +26,7 @@ def inspect(project,state_dir=DEFAULT_STATE):
 def plan(project,state_dir=DEFAULT_STATE):
     result=inspect(project,state_dir);p=Path(result['project'])
     return {'status':'PLAN_ONLY','project':str(p),'requires_explicit_owner_authorization':True,
-        'proposed_paths':[str(p/'.agents/skills/agent-librarian/SKILL.md'),str(p/'.agent-librarian/project.json')],
+        'proposed_paths':[],
         'would_preserve_existing_skill':result['skill_present'],'would_preserve_existing_mapping':result['project_mapping_present'],
         'active_agent_configuration_change':'SEPARATE_REVIEW_REQUIRED','authentication_change':False,'project_writes':0,
-        'installer_implementation':'FOLLOW_UP_CONTRACT_PREPARED'}
+        'installer_implementation':'USE_SETUP_INSTALL_USER_LOCAL'}
