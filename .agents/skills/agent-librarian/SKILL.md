@@ -11,8 +11,9 @@ Discover the installed runtime and project mapping before requesting setup:
 librarian setup status --project "$PWD"
 ```
 
-If `librarian` is unavailable, use the interpreter/command recorded by an existing
-project installation; do not create another installation or MCP server implicitly.
+If `librarian` is unavailable, read `installation.json` beside this installed
+skill when present and use its recorded interpreter with
+`-I -B -m agent_librarian`. Otherwise use an existing project installation; do not create another installation or MCP server implicitly.
 Use `librarian setup plan --project "$PWD"` when setup or repair is needed. The
 current installer contract is plan-only; obtain authorization for concrete project
 changes rather than overwriting instructions/configuration. Missing installation
@@ -22,7 +23,11 @@ Authentication is user-level persistent state, outside projects. Check `libraria
 auth status` without network. Reuse an existing valid session. Do not read browser
 cookies, access browser-wide Keychain keys, attach a debugger, change authentication,
 or install project/Agent configuration without the required explicit owner scope.
-The direct Brave cookie bridge is an opt-in personal pilot, not the public default.
+For an already configured native Brave connection, `librarian browser status` is
+offline. Reuse the pinned Notebook tab and persistent account binding; do not run
+`browser connect` merely because a new Agent session started. Missing/closed tabs
+require owner action, not a new profile. Native requests keep tokens in the page.
+The direct Brave cookie bridge is a historical opt-in pilot, not the public default.
 An extension/native-messaging Connect workflow is the preferred architecture to evaluate.
 
 Use the project's configured provider/notebook mapping and the existing restricted

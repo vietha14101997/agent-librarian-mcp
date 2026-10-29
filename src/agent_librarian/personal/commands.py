@@ -20,7 +20,13 @@ def dispatch(args):
         if method=='existing-brave' and not getattr(args,'brave_profile',None):raise Rejected('BRAVE_PROFILE_SELECTION_REQUIRED')
         if not args.consent_discovery:raise Rejected('LOGIN_AND_DISCOVERY_CONSENT_REQUIRED')
     state=existing or PersonalState(path,create=login_action)
+    if args.command=='browser':
+        from .brave_transport import connect,browser_status
+        return connect(state,args.consent_discovery,active_tab=args.active_tab) if args.browser_action=='connect' else browser_status(state)
     if args.command=='auth':
+        from .brave_transport import CONNECTION,browser_status
+        if args.auth_action in ('status','login') and (state.path/CONNECTION).exists():
+            return browser_status(state) # Never fall back to cookie replay or managed login.
         if args.auth_action=='status' and not state.load()['authenticated']:
             return status(state,None,args.show_account)
         store=PersonalKeychainStore(state)

@@ -115,14 +115,21 @@ async def login(state,store,consent,timeout=600,capture=capture_brave,sender=Non
     if not consent:raise Rejected('LOGIN_AND_DISCOVERY_CONSENT_REQUIRED')
     store.probe() # Prove Keychain availability before asking the human to sign in.
     config=state.load()
-    if config['authenticated'] and (state.path/'notebooks.json').exists():
+    if config['authenticated']:
         saved=store.load()
         if saved.account_id!=config['account_id'] or saved.host!=config['host']:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')
         sessions=seed_manager(store,saved);check=GeminiHTTPS(sessions,{},sender=sender,validate_discovery=False)
         try:
             sessions.ensure(check._refresh)
+            discovery_requests=0
+            if not (state.path/'notebooks.json').exists():
+                if not consent:raise Rejected('DISCOVERY_CONSENT_REQUIRED_SESSION_RETAINED')
+                books=parse_discovery(check.request(ReadRequest('rpc',LIST_RPC,'/',[None,1,None,[2]])))
+                with state.lock():
+                    write_private(state.path/'notebooks.json',{'account_id':config['account_id'],'notebooks':books})
+                discovery_requests=1
             return {'status':'AUTHENTICATED_REUSED','mode':'PERSONAL_LOCAL','account':saved.expected_email,'storage':'MACOS_KEYCHAIN',
-                'discovery_requests':0,'browser_reopened':False,
+                'discovery_requests':discovery_requests,'browser_reopened':False,
                 'notebooks':[{'notebook_id':b['notebook_id'],'title':b['title']} for b in state.inventory()['notebooks']]}
         finally:check.close()
     session=await capture(state,timeout)

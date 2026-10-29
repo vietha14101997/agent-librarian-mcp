@@ -16,7 +16,7 @@ import time
 from urllib.parse import urlsplit
 from ..gateway.common import Rejected,strict_json
 from ..providers.gemini import LIST_RPC,ReadRequest,parse_discovery
-from ..providers.https_transport import FixedTLS,GeminiHTTPS,HttpReply
+from ..providers.https_transport import FixedTLS,GeminiHTTPS,HttpReply,PAGE_FETCH_HEADERS
 from ..providers.session import Session,GOOGLE_HOSTS
 from .browser_auth import browser_session,seed_manager
 from .state import private_dir,read_private,write_private
@@ -26,8 +26,15 @@ from .progress import LoginProgress
 BRAVE_ROOT=Path.home()/'Library/Application Support/BraveSoftware/Brave-Browser'
 AUTH_NAMES=('SID','HSID','SSID','APISID','SAPISID','SIDCC','__Secure-1PSID','__Secure-3PSID','__Secure-1PSIDCC','__Secure-3PSIDCC','__Secure-1PSIDTS','__Secure-3PSIDTS')
 COOKIE_HOSTS=('.google.com','google.com','notebooklm.google.com','.notebooklm.google.com','notebook.google.com','.notebook.google.com')
+SECONDARY_AUTH_NAMES=('OSID','LSID','__Host-GAPS','ACCOUNT_CHOOSER')
+SECONDARY_COOKIE_HOSTS=COOKIE_HOSTS+('accounts.google.com','.accounts.google.com')
 
-def selected_records(profile_id,root=BRAVE_ROOT):
+def permitted_record(row,secondary_bindings=False):
+    return (isinstance(row,dict) and row.get('path')=='/' and
+        ((row.get('name') in AUTH_NAMES and row.get('domain') in COOKIE_HOSTS) or
+         (secondary_bindings and row.get('name') in SECONDARY_AUTH_NAMES and row.get('domain') in SECONDARY_COOKIE_HOSTS)))
+
+def selected_records(profile_id,root=BRAVE_ROOT,*,secondary_bindings=False):
     if not isinstance(profile_id,str) or not re.fullmatch(r'Default|Profile [0-9]+',profile_id):raise Rejected('BRAVE_PROFILE_SELECTION_REQUIRED')
     directory=Path(root)/profile_id
     present=[p for p in (directory/'Network/Cookies',directory/'Cookies') if p.exists()]
@@ -36,20 +43,25 @@ def selected_records(profile_id,root=BRAVE_ROOT):
     if any(p.is_symlink() for p in [path,*path.parents]):raise Rejected('BRAVE_COOKIE_PATH_UNSAFE')
     s=path.stat()
     if not stat.S_ISREG(s.st_mode) or s.st_uid!=os.geteuid() or s.st_size>128*1024*1024:raise Rejected('BRAVE_COOKIE_PATH_UNSAFE')
-    where='host_key IN ('+','.join('?' for _ in COOKIE_HOSTS)+') AND name IN ('+','.join('?' for _ in AUTH_NAMES)+") AND path='/' AND (expires_utc=0 OR expires_utc>?)"
+    scope='(host_key IN ('+','.join('?' for _ in COOKIE_HOSTS)+') AND name IN ('+','.join('?' for _ in AUTH_NAMES)+'))'
+    parameters=COOKIE_HOSTS+AUTH_NAMES
+    if secondary_bindings:
+        scope+=' OR (host_key IN ('+','.join('?' for _ in SECONDARY_COOKIE_HOSTS)+') AND name IN ('+','.join('?' for _ in SECONDARY_AUTH_NAMES)+'))'
+        parameters+=SECONDARY_COOKIE_HOSTS+SECONDARY_AUTH_NAMES
+    where='('+scope+") AND path='/' AND (expires_utc=0 OR expires_utc>?)"
     now=int((time.time()+11644473600)*1000000)
     try:
         with sqlite3.connect(path.as_uri()+'?mode=ro&immutable=1',uri=True,timeout=2) as connection:
             version=connection.execute("SELECT value FROM meta WHERE key='version'").fetchone()
             if version is None or str(version[0])!='24':raise Rejected('BRAVE_COOKIE_SCHEMA_UNSUPPORTED')
-            rows=connection.execute('SELECT name,host_key,path,encrypted_value,is_secure FROM cookies WHERE '+where+' LIMIT 65',COOKIE_HOSTS+AUTH_NAMES+(now,)).fetchall()
+            rows=connection.execute('SELECT name,host_key,path,encrypted_value,is_secure FROM cookies WHERE '+where+' LIMIT 65',parameters+(now,)).fetchall()
     except Rejected:raise
     except (sqlite3.Error,OSError):raise Rejected('BRAVE_COOKIE_READ_ONLY_UNAVAILABLE') from None
     if not rows or len(rows)>64:raise Rejected('BRAVE_AUTH_COOKIE_RECORDS_UNAVAILABLE')
     records=[]
     for name,host,path,encrypted,secure in rows:
         if not isinstance(encrypted,bytes) or not encrypted.startswith(b'v10') or not 3<len(encrypted)<=16384 or (len(encrypted)-3)%16:raise Rejected('BRAVE_COOKIE_ENCRYPTION_UNSUPPORTED')
-        if name.startswith('__Secure-') and not secure:raise Rejected('BRAVE_AUTH_COOKIE_ATTRIBUTES_INVALID')
+        if name.startswith(('__Secure-','__Host-')) and not secure:raise Rejected('BRAVE_AUTH_COOKIE_ATTRIBUTES_INVALID')
         records.append({'name':name,'domain':host,'path':path,'secure':'true' if secure else 'false','encrypted_value':base64.b64encode(encrypted).decode()})
     if not {'SID','HSID','SSID','APISID','SAPISID'}<=set(r['name'] for r in records):raise Rejected('BRAVE_REQUIRED_AUTH_COOKIES_MISSING')
     return {'schema_version':24,'records':records}
@@ -74,7 +86,9 @@ def prepare_bridge(state):
     target.chmod(0o700);write_private(receipt,{'source_sha256':digest,'binary_sha256':hashlib.sha256(target.read_bytes()).hexdigest()})
     return target
 
-def decrypt_records(state,payload,helper=None):
+def decrypt_records(state,payload,helper=None,*,secondary_bindings=False):
+    if any(not permitted_record(row,secondary_bindings) for row in payload.get('records',[])):
+        raise Rejected('BRAVE_COOKIE_RECORD_SCOPE_REJECTED')
     helper=helper or prepare_bridge(state)
     raw=json.dumps(payload,separators=(',',':')).encode()
     if len(raw)>262144:raise Rejected('BRAVE_COOKIE_PAYLOAD_LIMIT')
@@ -95,7 +109,7 @@ def decrypt_records(state,payload,helper=None):
     except Exception:raise Rejected('BRAVE_COOKIE_BRIDGE_RESPONSE_INVALID') from None
     if not isinstance(cookies,list) or not 1<=len(cookies)<=64:raise Rejected('BRAVE_COOKIE_BRIDGE_RESPONSE_INVALID')
     for c in cookies:
-        if not isinstance(c,dict) or c.get('name') not in AUTH_NAMES or c.get('domain') not in COOKIE_HOSTS or c.get('path')!='/' or type(c.get('secure')) is not bool or c['name'].startswith('__Secure-') and not c['secure']:raise Rejected('BRAVE_COOKIE_BRIDGE_RESPONSE_INVALID')
+        if not permitted_record(c,secondary_bindings) or type(c.get('secure')) is not bool or c['name'].startswith(('__Secure-','__Host-')) and not c['secure']:raise Rejected('BRAVE_COOKIE_BRIDGE_RESPONSE_INVALID')
     return cookies
 
 def account_probe(cookies,account_id,host='notebook.google.com',sender_factory=FixedTLS):
@@ -104,8 +118,7 @@ def account_probe(cookies,account_id,host='notebook.google.com',sender_factory=F
         applicable={c['name']:c['value'] for c in sorted(cookies,key=lambda c:len(c['domain'])) if host==c['domain'].lstrip('.') or host.endswith('.'+c['domain'].lstrip('.'))}
         seed=Session(account_id,'unvalidated@example.invalid',applicable,'pending','1','pending',1,host).validate()
         sender=sender_factory(host)
-        try:reply=sender.send('GET','/',{'Cookie':seed.cookie_header(),'Accept':'text/html','Accept-Encoding':'identity',
-            'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'},None,15,2*1024*1024)
+        try:reply=sender.send('GET','/',dict(PAGE_FETCH_HEADERS,Cookie=seed.cookie_header(),**{'Accept-Encoding':'identity'}),None,15,2*1024*1024)
         except Exception:raise Rejected('BRAVE_ACCOUNT_VALIDATION_TRANSPORT_FAILED') from None
         finally:sender.close()
         if not isinstance(reply,HttpReply):raise Rejected('BRAVE_ACCOUNT_VALIDATION_RESPONSE_INVALID')
@@ -133,18 +146,26 @@ def connect(state,store,profile_id,consent,sender=None,reader=selected_records,d
     except Rejected as error:
         progress.event('account_validation_failed',code=error.code);raise
     progress.event('http_account_validated')
+    # A discovery decoder failure must not discard a validated login.
+    store.save(session);progress.event('keychain_session_saved')
+    with state.lock():
+        c=state.load();c.update(authenticated=True,host=session.host,selected_notebook=None,query_permit=None,generation=c['generation']+1)
+        state.save(c)
     # The browser-wide key is absent from this process and not part of Session.
     manager=seed_manager(store,session);transport=GeminiHTTPS(manager,{},timeout=15,sender=sender,validate_discovery=False)
     try:
         books=parse_discovery(transport.request(ReadRequest('rpc',LIST_RPC,'/',[None,1,None,[2]])))
         progress.event('discovery_completed',discovery_requests=1,notebook_count=len(books))
-        store.save(session);progress.event('keychain_session_saved')
         with state.lock():
-            c=state.load();c.update(authenticated=True,host=session.host,selected_notebook=None,query_permit=None,generation=c['generation']+1)
-            write_private(state.path/'notebooks.json',{'account_id':c['account_id'],'notebooks':books});state.save(c)
+            c=state.load()
+            write_private(state.path/'notebooks.json',{'account_id':c['account_id'],'notebooks':books})
             write_private(state.path/'existing-session-approval.json',{'method':'SCOPED_READ_ONLY_PERSONAL_PILOT','profile_id':profile_id,
                 'profile_writes':False,'database_copied':False,'master_key_persisted':False,'discovery_requests':1})
         progress.event('authentication_complete')
         return {'status':'AUTHENTICATED','mode':'PERSONAL_LOCAL','method':'EXISTING_BRAVE_SCOPED_PILOT','account':session.expected_email,
             'storage':'MACOS_KEYCHAIN','discovery_requests':1,'notebooks':[{'notebook_id':b['notebook_id'],'title':b['title']} for b in books]}
+    except Rejected as error:
+        progress.event('discovery_failed_session_retained',code=error.code)
+        error.diagnostics={'phase':'NOTEBOOK_DISCOVERY','authentication':'SUCCEEDED_KEYCHAIN_SAVED'}
+        raise
     finally:transport.close()

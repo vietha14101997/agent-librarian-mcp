@@ -1,155 +1,94 @@
-# Personal Local authentication and controlled-pilot status
+# Personal Local native Brave pilot
 
-`auth login` reuses an existing saved application session when present. With no
-saved session it requires explicit method selection. It never accesses a normal
-profile or creates a managed profile automatically. The scoped existing-Brave
-method requires `--method existing-brave --brave-profile <owner-selected ID>
---consent-existing-session --consent-discovery`. It is an opt-in personal pilot.
-The managed method is an explicit alternative, not a Personal Local requirement.
+KN-OSS-04 completed real notebook discovery, one successful MCP research query and
+three cited-source reads through the selected existing Brave Notebook session.
+The four-tool gateway is unchanged. Separately approved user-level Skill/runtime/MCP activation and a fresh Codex
+health check also passed, without Google requests. General project installation
+and mapping remain follow-up work. This is a macOS personal pilot, not a
+public cross-platform authentication design.
 
-The controlled attempt decrypted the approved records, but account validation
-received HTTP 302 to Google sign-in. It stopped without saving a session, discovery
-or query. This does not establish that normal Brave is signed out. The cause
-(browser-live/WAL freshness, account context or provider compatibility) is not
-established. No broader extraction or browser restart/debugger attachment followed.
-An extension/native-messaging Connect flow is the preferred future evaluation.
+## Existing browser connection
 
-# Personal Local authentication — current strategy
+The owner explicitly approved Brave JavaScript from Apple Events and macOS
+Automation access. Those permissions are Brave-wide. The adapter pins one window
+and tab, requires the `https://notebook.google.com/` homepage and checks its account
+before each network dispatch. It never enumerates other tabs, extracts cookies,
+reads browser databases, attaches a debugger, installs extensions, changes profiles,
+restarts Brave or requests another Google login. Tokens stay inside the page.
+Normal product use does not require manual DevTools execution.
 
-The owner prefers reuse of an existing authenticated Brave profile. `auth login`
-now stops with EXISTING_BRAVE_ACCESS_APPROVAL_REQUIRED before opening a profile.
-The scoped read-only cookie/Keychain route and an extension/native-messaging route
-have been assessed; normal-profile access awaits separate explicit approval. No
-normal cookies, browser Keychain item or debugger endpoint has been accessed.
+The current pilot also requires the previously protected Agent Librarian Keychain
+session as its account-identity binding. Native RPC does not replay those cookies.
+First-install account bootstrap without that historical session is still pending;
+do not present this pilot as a complete public Connect flow. Extension/native
+messaging remains the preferred future public architecture to evaluate.
 
-The managed-profile implementation below remains an optional, explicit alternative
-(`auth login --method managed-brave --consent-discovery`), not a mandatory Personal
-Local requirement and not an automatic fallback. It is stopped for this pilot.
-
-
-Personal Local runs as your current macOS user, on demand, with the existing
-four-tool research gateway. It needs no root, launchd, new account or VM. The
-advanced host-isolated deployment profile remains optional and separate.
+State lives under `~/Library/Application Support/AgentLibrarian/personal-local/`,
+with user-only permissions, outside Git. There is no plaintext credential fallback,
+root requirement, service account, VM or background daemon.
 
 ```sh
-uv sync --locked --extra personal --python 3.12
-.venv/bin/librarian auth login --consent-discovery
-.venv/bin/librarian auth status
-.venv/bin/librarian notebooks list
-.venv/bin/librarian notebooks select --notebook-id YOUR_DISCOVERED_ID
-.venv/bin/librarian research approve --question 'YOUR_EXACT_NONSENSITIVE_QUESTION' --ack-history
-.venv/bin/librarian research query --question 'YOUR_EXACT_NONSENSITIVE_QUESTION'
+librarian auth status
+librarian browser status
+librarian notebooks list
 ```
 
-Brave and Apple Command Line Tools are required by the supported macOS flow.
-No Playwright browser download is required: the pinned optional dependency uses
-installed Brave. Default state is ~/Library/Application Support/AgentLibrarian/
-personal-local/, outside your repository. Newly created runtime directories and
-configuration are user-only. Never use a normal browser profile as --state-dir.
+These commands read persisted local status/inventory without Google requests or
+new login. `BROWSER_DISCOVERY_VERIFIED` is cached evidence, not a fresh assertion of
+session validity. Native RPC validates the live page/account at dispatch.
 
-## Sign-in and visible outcomes
-
-The currently supported explicit sign-in method launches/resumes one managed Brave
-profile under that runtime directory, using a private Playwright pipe. The normal
-Brave profile is never searched, opened, read for cookies, or attached to a debugger.
-Sign in normally in the managed window and remain on the Notebook home page.
-Previously saved Google sign-in in that profile is retained between attempts.
-Temporary empty page lists, popup handoffs and navigation transitions are not
-user cancellation. Only a confirmed closed context or timeout ends capture.
-
-Successful login checks browser and HTTP account binding, completes one bounded
-read-only discovery, persists session material to a new runtime-specific macOS
-Keychain item, and returns AUTHENTICATED plus the account/notebook inventory. A
-native outcome alert accompanies the CLI result; --no-notify disables the alert.
-If an already saved session is usable, login returns AUTHENTICATED_REUSED without
-opening a browser or repeating discovery. auth status is offline and shows the
-last sanitized lifecycle outcome; --show-account explicitly displays the account.
-No cookie, token, CSRF value or raw authenticated response is printed or logged.
-
-Lifecycle metadata distinguishes page closure, browser disconnection and
-controller cleanup. A window closing does not by itself prove Google sign-in
-failed or succeeded. The profile can retain sign-in even when no Keychain session
-was committed. Check auth status before repeating login.
-
-## Why this is not an ordinary OAuth callback
-
-The reviewed unofficial consumer API transport uses browser-session cookies and
-page tokens. It supplies no accepted OAuth callback for returning a system-browser
-login to this application. Personal Local itself is profile-independent and takes
-a credential-store capability; a separate profile is not an OS security requirement.
-The supported managed flow uses one to obtain consented session material without
-touching unrelated sessions. Accessing an already-running normal Brave session
-would need separate explicit authorization for cookies/debugger access (or another
-reviewed integration). The tool does not silently do that or claim an OAuth flow
-exists. Do not reuse another application's OAuth tokens.
-
-## Discovery, selection and one-query pilot
-
-Discovery may enumerate notebooks accessible to your account before the gateway
-filters results. It reads metadata, not notebook source bodies. Choose the actual
-notebook ID from the returned list; no ID is guessed. Selection is persisted locally.
-The gateway permits only the selected notebook and its approved source IDs. Local
-list operations reuse discovered metadata, preventing accidental repeated inventory
-requests. Session page refresh does not add a discovery request in this mode.
-
-The initial pilot uses one exact question approval with explicit acknowledgment
-that Notebook can persist chat history. The permit is consumed before dispatch,
-including an uncertain failure; there is no automatic query retry. For an MCP pilot,
-run a direct metadata check, then send the single approved query through MCP rather
-than running a second query. Returned source references are associations, not proof
-of semantic support or exact revision. A successful answer without independently
-checked citations remains SOURCE_VERIFICATION_INCOMPLETE.
-
-## MCP integration
+An explicitly approved connection performs one bounded metadata discovery:
 
 ```sh
-.venv/bin/librarian mcp-serve --provider personal
+librarian browser connect --consent-discovery
 ```
 
-This starts only stdio, in process. Exactly list_notebooks, get_notebook, query and
-get_source research tools are exposed under their librarian_ names. It exposes no
-login/profile/store/admin arguments through MCP. Close the MCP process to stop it;
-local logout or state generation changes invalidate existing providers. See
-examples/codex.personal.disabled.toml. Review the concrete host configuration and
-approve it before modifying active Codex settings; avoid duplicate Notebook servers.
+It reuses a saved pinned connection. Only use `--active-tab` after explicit approval
+to bind a replacement, with the intended Notebook homepage selected in front Brave.
+Missing tabs, denied Automation/JavaScript permissions, account mismatch or missing
+page fields return a fixed error. There is no fallback to cookie extraction, the
+managed browser or standalone HTTP. Stopping MCP never closes or navigates Brave.
 
-The pilot's exact-query permit is intentionally finite. Unattended ongoing research
-has not been enabled by that permit. A natural-language host request still needs
-its applicable owner/tool approval; catalog/disclosure planning does not authorize
-remote writes. No synchronization, import, deletion or sharing is implemented.
+## Exact-question pilot
 
-## Expiry, logout and removal
-
-Expired page tokens refresh against the same approved account without browser
-recovery or a query retry. Expired Google cookies require explicit auth login;
-retained managed-profile sign-in may avoid entering credentials again. Account
-mismatch fails closed; switching Google accounts is never an MCP operation.
+Choose an ID from the cached inventory; selection alone grants no query permission.
 
 ```sh
-.venv/bin/librarian auth logout
+librarian notebooks select --notebook-id YOUR_DISCOVERED_ID
+librarian research approve --question 'YOUR_EXACT_QUESTION' --ack-history
+librarian mcp-serve --provider personal
 ```
 
-Logout disables running providers and deletes only this runtime's Keychain session
-item. It retains the managed browser profile and does not revoke Google's sessions.
-Revoke provider sessions through Google's own account controls if needed. After
-stopping all Librarian processes, you may explicitly remove only the dedicated
-AgentLibrarian runtime directory to remove its browser state, compiler cache and
-metadata. Never remove a normal Brave profile. Logout before removing state so
-the runtime-specific Keychain selector remains available for deletion.
+The stdio MCP process exposes only `librarian_list_notebooks`,
+`librarian_get_notebook`, `librarian_query` and `librarian_get_source`. The gateway
+restricts notebook/source identities and question input. The one-query permit is
+consumed before dispatch. Notebook may save chat history. Timeout, disconnect or
+parse failure can leave completion unknown; do not retry without separate approval.
+The KN-OSS-04 successful permit is consumed; installing Skill/MCP grants no new one.
 
-## Errors and risk
+Native query streams are bounded to 2 MiB and 30 seconds; read RPC/source responses
+and projected MCP payloads retain their 128-KiB bounds. No imports, sharing,
+deletions, arbitrary RPC or synchronization are exposed. Returned text is untrusted
+data. Citation associations do not independently prove semantic support, exact
+revision or exact offsets. The live pilot's main summary claims were checked against
+all three returned source texts; canonical originals were not independently attested.
 
-PERSONAL_KEYCHAIN_UNAVAILABLE includes a numeric OSStatus when available. A locked
-or inaccessible Keychain, missing compiler or denied helper operation is reported;
-there is no plaintext cookie-file fallback. BRAVE_WINDOW_CLOSED means the context
-closed, not that Google rejected a password. BRAVE_LOGIN_TIMEOUT retains profile
-state. SESSION_REFRESH_STRUCTURE_CHANGED means reviewed page fields no longer
-match; do not dump the page or blindly retry queries. auth status never refreshes
-or contacts Google by itself.
+## Status, disabling and limitations
 
-Keychain protection and user-only permissions reduce accidental disclosure; they
-do not isolate credentials from a trusted same-user shell. The managed browser
-also retains protected authentication state. A primary Google account exposes a
-broader credential/account inventory surface than a research-only account. Untrusted
-text can contain prompt injections; retrieved data never changes gateway dispatch.
-No mandatory host-isolation gate applies to Personal Local mode.
+`auth status` and `browser status` report explicit cached success/failure without a
+new browser launch. Account mismatch fails before dispatch. The browser must remain
+running with the approved Notebook homepage available. Navigation/restart may require
+an explicitly approved rebind. Normal Google session expiry is an owner-visible
+blocker, never a reason to silently broaden access or request another login.
+
+Create `DISABLED` in the user-state directory to block operations. Local logout
+invalidates providers and deletes only Agent Librarian's Keychain session; it does
+not close Brave or revoke Google sessions. Preserve the runtime-specific selector
+until logout completes. Do not delete a normal Brave profile.
+
+Keychain and user-only files reduce accidental disclosure; trusted same-user shells
+can still access application state. The native adapter retains this Personal Local
+trust model. The advanced isolated deployment is optional and separate. Historical
+managed-profile and scoped cookie code remains for review; neither is an automatic
+fallback. Standalone HTTP research RPC error 16 is unresolved. Native success does
+not independently establish device binding.

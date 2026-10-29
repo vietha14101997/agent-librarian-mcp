@@ -12,8 +12,11 @@ The reusable product has four independent layers:
 This repository ships the minimal discoverable skill skeleton and read-only setup
 status/planning commands. It does not install into another project or alter active
 Agent settings. A newly started CLI process can detect these persisted artifacts
-without conversation history. Actual fresh Codex-model discovery and cross-client
-adapters have not been certified in KN-OSS-04.
+without conversation history. A separately approved user-level pilot installed the Skill in ~/.agents/skills,
+a persistent runtime outside Git and one restricted Codex MCP entry. A fresh
+ephemeral Codex session found the Skill/runtime and four tools, with local status
+checks only and no Google requests. Repeated activation was a no-op. This does not
+certify cross-client adapters or a general project installer.
 
 ## Implemented deterministic checks
 
@@ -40,8 +43,9 @@ unchanged receipt-owned files; never delete user authentication as a side effect
 
 MCP verification must parse the chosen Agent's supported configuration and verify
 the exact restricted command/tool registry, preserving unrelated entries. Produce
-a reviewable config patch before applying it. Actual Codex registration requires
-separate approval after a successful pilot. No global settings are modified here.
+a reviewable config patch before applying it. The personal pilot registration received separate owner approval after the live
+pilot passed. No unrelated Agent settings or project files were changed. General
+installer activation still requires explicit approval for the selected targets.
 
 Project mapping schema v1 should identify provider, notebook ID, runtime mode and
 user-auth reference. It must not contain cookies, tokens, browser paths, passwords

@@ -20,10 +20,14 @@ guard raw.count <= 262144,
     let records = input["records"] as? [[String: String]], !records.isEmpty, records.count <= 64 else { fail("BRAVE_COOKIE_PAYLOAD_INVALID") }
 let names = Set(["SID","HSID","SSID","APISID","SAPISID","SIDCC","__Secure-1PSID","__Secure-3PSID","__Secure-1PSIDCC","__Secure-3PSIDCC","__Secure-1PSIDTS","__Secure-3PSIDTS"])
 let hosts = Set([".google.com","google.com","notebooklm.google.com",".notebooklm.google.com","notebook.google.com",".notebook.google.com"])
+let secondaryNames = Set(["OSID","LSID","__Host-GAPS","ACCOUNT_CHOOSER"])
+let secondaryHosts = hosts.union(["accounts.google.com",".accounts.google.com"])
 for row in records {
     guard Set(row.keys) == Set(["name","domain","path","secure","encrypted_value"]),
-        let name = row["name"], names.contains(name), let host = row["domain"], hosts.contains(host), row["path"] == "/", (row["secure"] == "true" || row["secure"] == "false"),
-        (!name.hasPrefix("__Secure-") || row["secure"] == "true"),
+        let name = row["name"], let host = row["domain"],
+        ((names.contains(name) && hosts.contains(host)) || (secondaryNames.contains(name) && secondaryHosts.contains(host))),
+        row["path"] == "/", (row["secure"] == "true" || row["secure"] == "false"),
+        (!(name.hasPrefix("__Secure-") || name.hasPrefix("__Host-")) || row["secure"] == "true"),
         let encoded = row["encrypted_value"], let data = Data(base64Encoded: encoded), data.count <= 16384,
         data.starts(with: Data("v10".utf8)), data.count > 3, (data.count - 3) % 16 == 0 else { fail("BRAVE_COOKIE_ENCRYPTION_UNSUPPORTED") }
 }

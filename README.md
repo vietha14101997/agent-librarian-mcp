@@ -1,10 +1,11 @@
 # Agent Librarian MCP
 
-[Personal Local quick start](docs/personal-local.md) is the default developer path.
-Install with `uv sync --locked --extra personal`, run `.venv/bin/librarian auth login
---consent-discovery`, choose a discovered notebook, then approve one exact question.
-Authentication state stays outside Git, with no plaintext cookie-file fallback.
-
+[Personal Local workflow](docs/personal-local.md) describes the opt-in macOS
+Brave native transport. The controlled pilot completed real notebook discovery,
+an MCP research query and three cited-source reads using the existing browser
+session. Separately approved persistent user-level activation and a fresh Codex health
+check also passed; no Google request ran during that check.
+Authentication state stays outside Git; no plaintext fallback is provided.
 
 A local Python package for deterministic document catalogs, provenance, change
 detection, disclosure-aware synchronization planning and restricted MCP research.
@@ -17,8 +18,7 @@ profile. Live acceptance is reported separately from implementation and offline 
 This project is independent development infrastructure. It is not an OSAgent
 product module or a general autonomous document-editing agent. It never uploads,
 edits or publishes documents, executes a sync plan, shares/deletes sources or
-starts a public MCP endpoint. Research queries may persist provider conversation
-history when a live provider is eventually introduced.
+starts a public MCP endpoint. Research queries may persist provider conversation history.
 
 ## Install locally
 
@@ -100,7 +100,7 @@ of the synthetic policy in its explicit state directory. For manual stdio use:
 
 Create state/demo/DISABLED or stop the process to disable calls. Query input is
 bounded, concurrent provider calls are rejected and timeout does not retry.
-Future real queries may persist Notebook chat history. The `google` provider
+Live queries may persist Notebook chat history. The `google` provider
 option always refuses startup. No browser profile or credential input is accepted
 through MCP. examples/codex.disabled.toml is a disabled configuration example,
 not an active registration or proof of Codex-host compatibility.
@@ -165,8 +165,8 @@ independent owner acceptance and explicit account/notebook/query approval.
 
 A [disabled Codex service example](examples/codex.service.disabled.toml) points only
 to the gateway. SDK-client transport is tested; actual Codex-host integration is
-not. No active global configuration changed. No real Google calls, normal Brave
-profile access, Library uploads or sync execution occurred.
+not. The Personal Local pilot below is separate from this advanced deployment.
+No Library uploads or sync execution occurred.
 
 ## Personal Local and advanced isolation
 
@@ -176,25 +176,28 @@ owner accepts trusted same-user process risks in that mode; the official four-to
 MCP interface still rejects administrative operations and authentication secrets.
 
 See [Personal Local workflow, login UX and limitations](docs/personal-local.md).
-Ordinary system-browser OAuth callback support has not been established for this
-unofficial consumer transport. The supported managed Brave flow is explicit and
-retains its sign-in; normal Brave is never silently attached or read. auth status
-and native outcome alerts make completion/failure visible before another attempt.
+The opt-in native macOS adapter uses Brave Apple Events and its in-page request
+context. It reuses the selected signed-in Notebook tab, without cookie extraction,
+debugger attachment, extensions, another profile or manual DevTools execution.
+Apple Events JavaScript and macOS Automation permission require explicit consent.
+The permission is browser-wide; the adapter pins one Notebook homepage and checks
+the account before dispatch. Closing the MCP process does not close Brave.
 
-## KN-OSS-04 controlled pilot and reusable Skill
+## KN-OSS-04 live pilot and reusable Skill
 
-The existing-Brave read-only cookie bridge is an explicitly consented personal
-pilot capability, not the public product's default. It requires the owner-selected
-profile and scoped consent for Google auth rows and the exact Brave Safe Storage
-item. It never copies the database, exports the master key, restarts/attaches normal
-Brave, or falls back to plaintext. The pilot reached verified decryption but Google
-redirected its fixed-host session validation to sign-in. No discovery/query
-succeeded and no session was saved. Live attempts stopped under the owner's rule.
+The native path completed an automated two-notebook discovery and an actual MCP SDK
+client → restricted gateway → Brave → Notebook query, with six citations across
+three retrieved sources. Their text supports the main answer topics; canonical
+revisions and exact citation offsets were not independently attested. The first
+query exceeded the old raw-stream limit with unknown completion; a separately
+approved second attempt succeeded. There is no automatic retry. Standalone HTTP
+RPC error 16 remains unresolved; this result does not independently prove device
+binding. No broader cookie access was needed for the native path.
 
-The future public Connect architecture should evaluate a browser extension and
-native messaging. The minimal `.agents/skills/agent-librarian/SKILL.md` skeleton and
-`librarian setup status`/`setup plan` detect persistent runtime/project state without
-conversation memory. Full idempotent installation, per-project mapping, repair,
-update/uninstall and client adapters remain in the
-[installation contract](docs/skill-installation.md). No other project or active MCP
-configuration was installed or modified.
+The provider-agnostic `.agents/skills/agent-librarian/SKILL.md` and read-only
+`librarian setup status` / `setup plan` support persistent discovery. A separately approved
+user-level Skill/runtime/MCP activation and fresh Codex health check passed. Full project
+mapping, idempotent repair/update/uninstall and other-client adapters remain in the
+[installation contract](docs/skill-installation.md). One restricted user MCP entry was added while preserving unrelated settings.
+Extension/native messaging remains a future public Connect option;
+the scoped cookie bridge is a historical personal pilot, not the public default.

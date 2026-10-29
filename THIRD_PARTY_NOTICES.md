@@ -214,3 +214,15 @@ was introduced.
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+## KN-OSS-04 native Brave RPC transport
+
+personal/brave_rpc.js adapts the in-page fetch/form construction from upstream
+core/cdp_transport.py and core/base.py at the same reviewed commit
+8ac9728ec5b128b05077e9d7c4c8bb11b5830c61. Copyright (c) 2025 Jacob Ben David, MIT;
+the full notice above applies. The upstream debugger lifecycle is not included.
+The local bridge uses native Brave Apple Events, a pinned Notebook homepage, an
+account check and existing four-operation request validation. It keeps page tokens
+in the browser and returns only bounded RPC data. The optional metadata decoder
+and streamed-query framing likewise follow the reviewed notebook/conversation
+layouts. No unrestricted upstream runtime or browser debugger is installed.

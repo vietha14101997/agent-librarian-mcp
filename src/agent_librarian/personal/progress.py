@@ -31,7 +31,7 @@ class LoginProgress:
 def notify_outcome(success,code=None):
     if sys.platform!='darwin':return
     text=('Connected. Your session is stored in macOS Keychain. Return to Codex or the terminal for notebook selection.' if success else
-        'Not connected. No verified session was saved by this attempt. Your browser profile was retained. Status: '+(code or 'AUTHENTICATION_REQUIRED'))
+        'Connection incomplete. Check auth status for saved-session and research-access results. Your browser profile was retained. Status: '+(code or 'AUTHENTICATION_REQUIRED'))
     # Static text plus a finite program error code; never account, token, URL or response data.
     script='display alert "Agent Librarian" message '+json.dumps(text)+' buttons {"OK"} default button "OK"'
     try:subprocess.Popen(['/usr/bin/osascript','-e',script],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

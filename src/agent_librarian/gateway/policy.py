@@ -59,7 +59,7 @@ class Gateway:
         data=raw.get('data')
         if not isinstance(data,dict):raise Rejected('PROVIDER_STRUCTURE_INVALID')
         kind=raw.get('provider_kind','SYNTHETIC_OFFLINE')
-        if kind not in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE','IPC_RESEARCH_SERVICE','GEMINI_HTTPS_UNVERIFIED'}:raise Rejected('PROVIDER_STRUCTURE_INVALID')
+        if kind not in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE','IPC_RESEARCH_SERVICE','GEMINI_HTTPS_UNVERIFIED','GEMINI_BROWSER_UNVERIFIED'}:raise Rejected('PROVIDER_STRUCTURE_INVALID')
         base=dict(status='OK',provider_status='ok',provider=kind,
             untrusted_research_data=True,verification_limitations=['No Google operation performed.'] if kind in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE'} else ['Live transport result; provenance and semantic support not independently attested.'])
         if name==NAMES[0]:

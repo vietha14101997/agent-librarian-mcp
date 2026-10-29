@@ -63,6 +63,12 @@ def parser():
     for action in ('list','select'):
         a=books.add_parser(action);a.add_argument('--state-dir')
         if action=='select':a.add_argument('--notebook-id',required=True)
+    c=sub.add_parser('browser',help='Opt-in native Brave connection; no debugger or cookie export')
+    browser=c.add_subparsers(dest='browser_action',required=True)
+    for action in ('connect','status'):
+        a=browser.add_parser(action);a.add_argument('--state-dir')
+        if action=='connect':
+            a.add_argument('--consent-discovery',action='store_true');a.add_argument('--active-tab',action='store_true',help='Explicitly replace a previous pinned Notebook tab')
     c=sub.add_parser('research',help='Four restricted Personal Local operations')
     research=c.add_subparsers(dest='research_action',required=True)
     for action in ('approve','query','notebook','source'):
@@ -89,7 +95,7 @@ def main(argv=None):
                 result=inspect(args.project,args.state_dir or DEFAULT_STATE) if args.setup_action=='status' else plan(args.project,args.state_dir or DEFAULT_STATE)
             except Rejected as e:raise CatalogError(e.code) from None
             print(json.dumps(result));return 0
-        if args.command in ('auth','notebooks','research'):
+        if args.command in ('auth','notebooks','research','browser'):
             from .personal.commands import dispatch
             from .gateway.common import Rejected
             try:result=dispatch(args)

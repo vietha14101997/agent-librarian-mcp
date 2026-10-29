@@ -5,15 +5,17 @@ the restricted official research interface, explicit login/selection/query conse
 Keychain-only session storage, user-only state, output projection/redaction and no
 administrative MCP operations. It does not establish OS credential isolation from
 same-user shells. The owner accepts this residual risk; a primary account expands
-the exposure. The normal Brave profile remains outside the supported managed flow.
+the exposure. The opt-in native Brave transport reuses one approved Notebook homepage through
+Apple Events; it does not extract cookies or attach a debugger. macOS Automation
+and Brave JavaScript permissions are browser-wide, despite the adapter tab gate.
 
 The remainder describes the optional advanced isolated deployment and shared
 controls. HOST_ISOLATION_PENDING_OWNER_SETUP does not block Personal Local mode.
 
 
-Version 0.3.0 is a local prototype with synthetic providers and restricted Unix IPC. Authenticated
-integration is **BLOCKED_PENDING_ISOLATED_RUNTIME**. There is no Google login,
-cookie import, browser extraction, TCP listener or synchronization executor.
+The advanced 0.3.0 isolated deployment remains blocked pending owner setup.
+Its synthetic providers and restricted Unix IPC are separate from the working
+Personal Local native pilot. There is no synchronization executor or public TCP endpoint.
 The local Unix listener checks kernel peer identity, fixed schemas and independent
 service policy; it does not establish host isolation under the same UID.
 
@@ -22,8 +24,7 @@ account/notebook/source allowlists, bounded queries, one provider operation at a
 time, provider timeout without retry, output projection, credential-pattern
 scrubbing, safe error codes and metadata-only receipts. A DISABLED sentinel in
 the configured control directory rejects new operations and discards a pending
-result. Stop/restart is required to reload policy. Query history may persist when
-a real provider is introduced; the fake provider does not contact Google.
+result. Stop/restart is required to reload policy. Live query history may persist; the fake provider does not contact Google.
 
 The POSIX scanner uses descriptor-relative no-follow opens, rejects symlinks and
 hardlinks, checks file identity/metadata before and after hashing and bounds file
@@ -40,10 +41,9 @@ at dispatch. There is no such execution path in this version.
 Local policies and approvals are declarations supplied by the operator; they are
 not signed owner attestations or tamper-proof stores. A same-UID shell can modify
 these files and run other code. A subprocess or virtual environment is not a
-credential boundary. Do not put real Google credentials into this environment.
-Future integration requires a separate OS identity, protected state inaccessible
-to the agent, restricted authenticated IPC, fixed account attestation, safe
-logging and tested revocation. Existing Brave sessions must not be reused.
+credential boundary. Advanced isolated deployment requires a separate OS identity and protected state;
+Personal Local instead accepts trusted same-user process access. Credentials must
+remain in protected user storage, never project files, logs or archives.
 
 Returned document text is untrusted data. It cannot change tool policy. Citation
 source IDs are provider associations, not proof of semantic support or exact
@@ -78,6 +78,7 @@ Scoped normal-Brave cookie reuse is never a silent default. The personal pilot
 requires explicit profile/row/Keychain consent and validates v10/schema24/domain
 binding. The browser-wide key remains in a short-lived native helper; no DB copy,
 key export, browser write/restart/debugger or plaintext fallback is implemented.
-The live account check redirected to sign-in; the operation stopped without
-broader access, discovery or query. The preferred public architecture to evaluate
+Earlier standalone replay reached homepage authentication but research RPC
+returned error 16. No further cookie expansion or unchanged HTTP retry is planned.
+The approved native path subsequently completed discovery and research. The preferred public architecture to evaluate
 is extension/native messaging, not browser-wide key extraction.

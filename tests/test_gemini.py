@@ -67,3 +67,20 @@ class GeminiTests(unittest.TestCase):
         with self.assertRaises(Rejected) as r:parse_source(raw,'source-approved')
         self.assertEqual(r.exception.code,'PROVIDER_SOURCE_MISMATCH')
     def test_16_empty_discovery_valid(self):self.assertEqual(parse_discovery([[]]),[])
+    def test_17_optional_source_metadata_matches_upstream(self):
+        raw=[[['Synthetic',['unexpected'],'invalid']]]
+        books=parse_discovery([[['Synthetic',None,'notebook-approved'],['',[],'notebook-empty']]])
+        self.assertEqual(books[0]['sources'],[]);self.assertEqual(books[1]['title'],'')
+        books=parse_discovery([[['Synthetic',[['source-approved',None]],'notebook-approved']]])
+        self.assertEqual(books[0]['sources'],[{'id':'source-approved','title':''}])
+        with self.assertRaises(Rejected):parse_discovery(raw)
+    def test_18_raw_progress_stream_can_exceed_projected_output_limit(self):
+        self.fixture['answer']='Synthetic answer. '*70
+        request=ReadRequest('stream',QUERY_ENDPOINT,'/notebook/notebook-approved',[[[['source-approved']]],'Synthetic question',None,[2,None,[1]],'12345678-1234-4234-8234-123456789abc'])
+        frame=self.transport.request(request).splitlines()[-1]
+        stream=")]}'\n"+'\n'.join([frame]*200)+'\n'
+        self.assertGreater(len(stream.encode()),131072)
+        parsed=parse_query(stream,['source-approved'])
+        self.assertEqual(parsed['answer'],self.fixture['answer'])
+        self.assertTrue(parsed['citations'])
+        with self.assertRaises(Rejected):parse_query('x'*(2*1024*1024+1),['source-approved'])

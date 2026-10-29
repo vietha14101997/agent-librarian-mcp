@@ -1,0 +1,145 @@
+{
+  "kind": "SYNTHETIC_UPSTREAM_WIRE_CONTRACT",
+  "not_a_live_capture": true,
+  "upstream_commit": "8ac9728ec5b128b05077e9d7c4c8bb11b5830c61",
+  "context": {
+    "email": "research@example.invalid",
+    "csrf": "SYNTHETIC_CSRF_03",
+    "session_id": "-12345",
+    "build_label": "synthetic_build_03",
+    "host": "notebook.google.com",
+    "cookies": [
+      {
+        "name": "SID",
+        "value": "SYNTHETIC_SID_ONLY",
+        "domain": ".google.com",
+        "path": "/",
+        "secure": true
+      },
+      {
+        "name": "OSID",
+        "value": "SYNTHETIC_OSID_ONLY",
+        "domain": "notebook.google.com",
+        "path": "/",
+        "secure": true
+      },
+      {
+        "name": "LSID",
+        "value": "SYNTHETIC_LSID_ONLY",
+        "domain": "accounts.google.com",
+        "path": "/",
+        "secure": true
+      }
+    ]
+  },
+  "contracts": [
+    {
+      "operation": "list",
+      "method": "POST",
+      "url": "https://notebook.google.com/_/LabsTailwindUi/data/batchexecute?rpcids=wXbhsf&source-path=%2F&bl=synthetic_build_03&hl=en&rt=c&f.sid=-12345",
+      "body": "f.req=%5B%5B%5B%22wXbhsf%22%2C%22%5Bnull%2C1%2Cnull%2C%5B2%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D&at=SYNTHETIC_CSRF_03&",
+      "headers": {
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "origin": "https://notebook.google.com",
+        "referer": "https://notebook.google.com/",
+        "x-same-domain": "1",
+        "x-goog-csrf-token": "SYNTHETIC_CSRF_03",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "cookie": "SID=SYNTHETIC_SID_ONLY; OSID=SYNTHETIC_OSID_ONLY"
+      },
+      "rpc": "wXbhsf",
+      "params": [
+        null,
+        1,
+        null,
+        [
+          2
+        ]
+      ],
+      "source_path": "/"
+    },
+    {
+      "operation": "get",
+      "method": "POST",
+      "url": "https://notebook.google.com/_/LabsTailwindUi/data/batchexecute?rpcids=rLM1Ne&source-path=%2Fnotebook%2Fnotebook-approved&bl=synthetic_build_03&hl=en&rt=c&f.sid=-12345",
+      "body": "f.req=%5B%5B%5B%22rLM1Ne%22%2C%22%5B%5C%22notebook-approved%5C%22%2Cnull%2C%5B2%5D%2Cnull%2C0%5D%22%2Cnull%2C%22generic%22%5D%5D%5D&at=SYNTHETIC_CSRF_03&",
+      "headers": {
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "origin": "https://notebook.google.com",
+        "referer": "https://notebook.google.com/",
+        "x-same-domain": "1",
+        "x-goog-csrf-token": "SYNTHETIC_CSRF_03",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "cookie": "SID=SYNTHETIC_SID_ONLY; OSID=SYNTHETIC_OSID_ONLY"
+      },
+      "rpc": "rLM1Ne",
+      "params": [
+        "notebook-approved",
+        null,
+        [
+          2
+        ],
+        null,
+        0
+      ],
+      "source_path": "/notebook/notebook-approved"
+    },
+    {
+      "operation": "source",
+      "method": "POST",
+      "url": "https://notebook.google.com/_/LabsTailwindUi/data/batchexecute?rpcids=hizoJc&source-path=%2F&bl=synthetic_build_03&hl=en&rt=c&f.sid=-12345",
+      "body": "f.req=%5B%5B%5B%22hizoJc%22%2C%22%5B%5B%5C%22source-approved%5C%22%5D%2C%5B2%5D%2C%5B2%5D%5D%22%2Cnull%2C%22generic%22%5D%5D%5D&at=SYNTHETIC_CSRF_03&",
+      "headers": {
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "origin": "https://notebook.google.com",
+        "referer": "https://notebook.google.com/",
+        "x-same-domain": "1",
+        "x-goog-csrf-token": "SYNTHETIC_CSRF_03",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "cookie": "SID=SYNTHETIC_SID_ONLY; OSID=SYNTHETIC_OSID_ONLY"
+      },
+      "rpc": "hizoJc",
+      "params": [
+        [
+          "source-approved"
+        ],
+        [
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "source_path": "/"
+    },
+    {
+      "operation": "query",
+      "method": "POST",
+      "url": "https://notebook.google.com/_/LabsTailwindUi/data/google.internal.labs.tailwind.orchestration.v1.LabsTailwindOrchestrationService/GenerateFreeFormStreamed?bl=synthetic_build_03&hl=en&_reqid=200000&rt=c&f.sid=-12345",
+      "body": "f.req=%5Bnull%2C%22%5B%5B%5B%5B%5C%22source-approved%5C%22%5D%5D%5D%2C%5C%22SYNTHETIC%3A%20Ti%E1%BA%BFng%20Vi%E1%BB%87t%20%26%20space%20%2B%20equals%20%3D%5C%22%2Cnull%2C%5B2%2Cnull%2C%5B1%5D%5D%2C%5C%2212345678-1234-4234-8234-123456789abc%5C%22%5D%22%5D&at=SYNTHETIC_CSRF_03&",
+      "headers": {
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8"
+      },
+      "params": [
+        [
+          [
+            [
+              "source-approved"
+            ]
+          ]
+        ],
+        "SYNTHETIC: Tiếng Việt & space + equals =",
+        null,
+        [
+          2,
+          null,
+          [
+            1
+          ]
+        ],
+        "12345678-1234-4234-8234-123456789abc"
+      ],
+      "source_path": "/notebook/notebook-approved"
+    }
+  ]
+}

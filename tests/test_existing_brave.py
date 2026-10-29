@@ -67,7 +67,7 @@ class ExistingBraveTests(unittest.TestCase):
     def test_10_bridge_response_scope_checked(self):
         result=subprocess.CompletedProcess([],0,b'{"cookies":[{"name":"OTHER","domain":".example.invalid","path":"/","secure":true}]}',b'')
         with patch('subprocess.run',return_value=result):self.error('BRAVE_COOKIE_BRIDGE_RESPONSE_INVALID',lambda:decrypt_records(self.state,{},helper='/SYNTHETIC/helper'))
-    def test_11_approved_capture_one_discovery_then_keychain(self):
+    def test_11_approved_capture_persist_session_and_one_discovery(self):
         s=replace(session(),account_id=self.state.load()['account_id'],expires_at=time.time()+300)
         store=MemoryStore(s);store.probe=lambda:None
         fixture=json.loads((ROOT/'tests/fixtures/research.json').read_text());http=ReplayHTTP(fixture)
@@ -85,6 +85,71 @@ class ExistingBraveTests(unittest.TestCase):
         with sqlite3.connect(self.db) as c:c.execute("UPDATE cookies SET is_secure=0 WHERE name='SID'")
         payload=selected_records('Default',self.browser)
         row=next(r for r in payload['records'] if r['name']=='SID');self.assertEqual(row['secure'],'false')
+
+    def test_15_account_probe_uses_reviewed_browser_navigation_headers(self):
+        from agent_librarian.providers.https_transport import HttpReply
+        calls=[]
+        class Sender:
+            def __init__(self,host):self.host=host
+            def send(self,method,path,headers,*rest):
+                calls.append((self.host,method,path,headers))
+                return HttpReply(302,{'location':'https://accounts.google.com/ServiceLogin'},b'')
+            def close(self):pass
+        cookies=[{'name':'SID','value':'SYNTHETIC_ONLY','domain':'.google.com','path':'/','secure':True}]
+        self.error('BRAVE_ACCOUNT_REDIRECT_REJECTED',lambda:account_probe(cookies,'synthetic',sender_factory=Sender))
+        self.assertEqual(len(calls),1)
+        host,method,path,headers=calls[0]
+        self.assertEqual((host,method,path),('notebook.google.com','GET','/'))
+        self.assertEqual(headers['Sec-Fetch-Dest'],'document')
+        self.assertEqual(headers['Sec-Fetch-Mode'],'navigate')
+        self.assertEqual(headers['Sec-Fetch-Site'],'none')
+        self.assertEqual(headers['Sec-Fetch-User'],'?1')
+        self.assertEqual(headers['Accept-Language'],'en-US,en;q=0.9')
+        self.assertIn('Chrome/124.0.0.0 Safari/537.36',headers['User-Agent'])
+        self.assertEqual(headers['Cookie'],'SID=SYNTHETIC_ONLY')
+
+    def test_16_secondary_records_require_explicit_scope(self):
+        with sqlite3.connect(self.db) as c:
+            c.execute('INSERT INTO cookies VALUES(?,?,?,?,?,?)',('LSID','accounts.google.com','/',1,0,b'v10'+b'x'*16))
+            c.execute('INSERT INTO cookies VALUES(?,?,?,?,?,?)',('OSID','notebook.google.com','/',1,0,b'v10'+b'y'*16))
+            c.execute('INSERT INTO cookies VALUES(?,?,?,?,?,?)',('UNRELATED','accounts.google.com','/',1,0,b'v10'+b'z'*16))
+        self.assertEqual(len(selected_records('Default',self.browser)['records']),5)
+        expanded=selected_records('Default',self.browser,secondary_bindings=True)
+        self.assertEqual({r['name'] for r in expanded['records']},{'SID','HSID','SSID','APISID','SAPISID','LSID','OSID'})
+        with patch('subprocess.run',side_effect=AssertionError('No key access before scope approval')):
+            self.error('BRAVE_COOKIE_RECORD_SCOPE_REJECTED',lambda:decrypt_records(self.state,expanded,helper='/SYNTHETIC/helper'))
+
+    def test_17_discovery_parse_failure_retains_validated_login(self):
+        from agent_librarian.providers.https_transport import HttpReply
+        s=replace(session(),account_id=self.state.load()['account_id'],expires_at=time.time()+300)
+        store=MemoryStore(s);store.probe=lambda:None
+        fixture=json.loads((ROOT/'tests/fixtures/research.json').read_text());http=ReplayHTTP(fixture)
+        http.next_reply=HttpReply(200,{'content-type':'application/json'},b'not valid JSON')
+        error=self.error('PROVIDER_PROTOCOL_ERROR',lambda:connect(self.state,store,'Default',True,sender=http,reader=lambda _: {'records':[]},decryptor=lambda *_:[],probe=lambda *_:s))
+        self.assertEqual(store.saved,1);self.assertTrue(self.state.load()['authenticated'])
+        self.assertEqual(error.diagnostics['authentication'],'SUCCEEDED_KEYCHAIN_SAVED')
+        self.assertEqual(len(http.calls),1)
+        import asyncio
+        from unittest.mock import AsyncMock
+        from agent_librarian.personal.browser_auth import login
+        capture=AsyncMock(side_effect=AssertionError('No repeated browser login'))
+        result=asyncio.run(login(self.state,store,True,capture=capture,sender=http))
+        self.assertEqual(result['status'],'AUTHENTICATED_REUSED');self.assertEqual(result['discovery_requests'],1)
+        capture.assert_not_called();self.assertEqual(len(http.calls),2)
+
+    def test_18_research_auth_rejection_is_visible_without_discarding_session(self):
+        from agent_librarian.personal.runtime import status
+        from agent_librarian.providers.https_transport import HttpReply
+        s=replace(session(),account_id=self.state.load()['account_id'],expires_at=time.time()+300)
+        store=MemoryStore(s);store.probe=lambda:None
+        fixture=json.loads((ROOT/'tests/fixtures/research.json').read_text());http=ReplayHTTP(fixture)
+        frame=json.dumps([['wrb.fr','wXbhsf',None,None,None,[16]]])
+        http.next_reply=HttpReply(200,{'content-type':'application/json'},(")]}'\n"+frame).encode())
+        self.error('AUTHENTICATION_EXPIRED',lambda:connect(self.state,store,'Default',True,sender=http,reader=lambda _: {'records':[]},decryptor=lambda *_:[],probe=lambda *_:s))
+        result=status(self.state,store)
+        self.assertFalse(result['authenticated']);self.assertTrue(result['stored_session_present'])
+        self.assertEqual(result['session_validation'],'HOMEPAGE_ACCEPTED_RESEARCH_RPC_REJECTED')
+        self.assertEqual(store.saved,1);self.assertEqual(len(http.calls),1)
 
 @unittest.skipUnless(sys.platform=='darwin','Native CommonCrypto test requires macOS SDK; no real Keychain is accessed.')
 class NativeBraveCryptoTests(unittest.TestCase):

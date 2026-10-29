@@ -13,15 +13,16 @@ from .state import PersonalState,write_private
 
 class PersonalProvider:
     runtime_mode='PERSONAL_LOCAL'
-    def __init__(self,state,backend,sessions,generation):
+    def __init__(self,state,backend,sessions,generation,provider_kind='GEMINI_HTTPS_UNVERIFIED'):
         self.state=state;self.backend=backend;self.sessions=sessions;self.generation=generation;self.closed=False
+        self.provider_kind=provider_kind
     def _check(self):
         c=self.state.load()
         if self.closed or not c['authenticated'] or c['generation']!=self.generation or (self.state.path/'DISABLED').exists():raise Rejected('SERVICE_DISABLED')
         return c
     def list_notebooks(self):
         c=self._check();b=c['selected_notebook']
-        return {'account_id':c['account_id'],'status':'ok','provider_kind':'GEMINI_HTTPS_UNVERIFIED',
+        return {'account_id':c['account_id'],'status':'ok','provider_kind':self.provider_kind,
             'data':{'notebooks':[{'id':b['notebook_id'],'title':b['title']}]},'inventory_origin':'OWNER_APPROVED_DISCOVERY_CACHE'}
     def get_notebook(self,notebook_id):self._check();return self.backend.get_notebook(notebook_id)
     def get_source(self,notebook_id,source_id):self._check();return self.backend.get_source(notebook_id,source_id)
@@ -46,9 +47,17 @@ def prepare(state,store=None,sender=None):
     def disabled():
         latest=state.load()
         return not latest['authenticated'] or latest['generation']!=c['generation'] or (state.path/'DISABLED').exists()
-    transport=GeminiHTTPS(sessions,notebooks,timeout=30,sender=sender,disabled=disabled,validate_discovery=False)
+    from .brave_transport import CONNECTION,BraveTransport
+    if (state.path/CONNECTION).exists():
+        from .state import read_private
+        connection=read_private(state.path/CONNECTION)
+        if connection.get('status')!='BROWSER_DISCOVERY_VERIFIED' or connection.get('account_id')!=c['account_id']:
+            raise Rejected('BROWSER_CONNECTION_NOT_READY')
+        transport=BraveTransport(connection,c['account_id'],s.expected_email,notebooks,disabled=disabled)
+        sessions=transport
+    else:transport=GeminiHTTPS(sessions,notebooks,timeout=30,sender=sender,disabled=disabled,validate_discovery=False)
     backend=GeminiResearchProvider(transport,AccountCapability(c['account_id']),notebooks)
-    provider=PersonalProvider(state,SecretConfinement(backend,sessions.secrets),sessions,c['generation'])
+    provider=PersonalProvider(state,SecretConfinement(backend,lambda:tuple(s.secrets())+tuple(sessions.secrets())),sessions,c['generation'],transport.provider_kind)
     return state.path/'research-policy.json',provider
 
 def status(state,store,show_account=False):
@@ -63,6 +72,10 @@ def status(state,store,show_account=False):
     s=store.load()
     if s.account_id!=c['account_id'] or s.host!=c['host']:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')
     result.update(authenticated=True,session_validation='CACHED' if s.expires_at>time.time() else 'REFRESH_REQUIRED_AT_NEXT_APPROVED_READ')
+    events=result.get('last_login',{}).get('events',[])
+    if events and events[-1].get('event')=='discovery_failed_session_retained' and events[-1].get('code')=='AUTHENTICATION_EXPIRED':
+        result.update(authenticated=False,stored_session_present=True,
+            session_validation='HOMEPAGE_ACCEPTED_RESEARCH_RPC_REJECTED')
     if show_account:result['account']=s.expected_email
     return result
 

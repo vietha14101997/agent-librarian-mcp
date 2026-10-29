@@ -14,6 +14,9 @@ LIST_RPC='wXbhsf'
 GET_RPC='rLM1Ne'
 SOURCE_RPC='hizoJc'
 QUERY_ENDPOINT='/_/LabsTailwindUi/data/google.internal.labs.tailwind.orchestration.v1.LabsTailwindOrchestrationService/GenerateFreeFormStreamed'
+# Raw progress frames repeat answer/citation data. Projected MCP output keeps
+# its independent 128-KiB bound; it is not the raw streamed-response limit.
+MAX_QUERY_STREAM_BYTES=2*1024*1024
 
 @dataclass(frozen=True)
 class AccountCapability:
@@ -36,10 +39,10 @@ class AuthenticatedReadTransport(Protocol):
     def request(self,request:ReadRequest): ...
     def close(self): ...
 
-def bounded(value):
+def bounded(value,*,max_bytes=131072):
     try:encoded=json.dumps(value,allow_nan=False)
     except (ValueError,TypeError,RecursionError):raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
-    if len(encoded.encode())>131072:raise Rejected('PROVIDER_RESPONSE_LIMIT')
+    if len(encoded.encode())>max_bytes:raise Rejected('PROVIDER_RESPONSE_LIMIT')
     stack=[(value,0)];count=0
     while stack:
         item,depth=stack.pop();count+=1
@@ -49,14 +52,18 @@ def bounded(value):
     return value
 
 def notebook_row(row):
-    if not isinstance(row,list) or len(row)<3 or not isinstance(row[1],list):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
+    if not isinstance(row,list) or len(row)<3 or row[1] is not None and not isinstance(row[1],list):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
     nb=ident(row[2]);title=text(row[0]);sources=[];seen=set()
-    if len(row[1])>1000:raise Rejected('PROVIDER_RESPONSE_LIMIT')
-    for src in row[1]:
-        if not isinstance(src,list) or len(src)<2 or not isinstance(src[0],list) or not src[0]:raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
-        sid=ident(src[0][0])
+    # Reviewed upstream NotebookMixin treats null source metadata as no sources
+    # and accepts either an ID string or its single-list wrapper.
+    rows=row[1] or []
+    if len(rows)>1000:raise Rejected('PROVIDER_RESPONSE_LIMIT')
+    for src in rows:
+        if not isinstance(src,list) or len(src)<2:raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
+        raw_id=src[0][0] if isinstance(src[0],list) and src[0] else src[0]
+        sid=ident(raw_id)
         if sid in seen:raise Rejected('PROVIDER_STRUCTURE_INVALID')
-        seen.add(sid);sources.append({'id':sid,'title':text(src[1])})
+        seen.add(sid);sources.append({'id':sid,'title':text('' if src[1] is None else src[1])})
     return {'notebook_id':nb,'title':title,'sources':sources}
 
 def parse_discovery(raw):
@@ -108,18 +115,18 @@ def cited_text(detail):
 
 def parse_query(stream,allowed_sources):
     if not isinstance(stream,str):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
-    if len(stream.encode())>131072:raise Rejected('PROVIDER_RESPONSE_LIMIT')
-    lines=iter(stream[4:].splitlines() if stream.startswith(")]}'") else stream.splitlines())
+    if len(stream.encode())>MAX_QUERY_STREAM_BYTES:raise Rejected('PROVIDER_RESPONSE_LIMIT')
+    lines=iter((stream[4:] if stream.startswith(")]}'") else stream).split('\n'))
     best=None
     for line in lines:
         line=line.strip()
         if not line:continue
         if line.isdigit():
-            size=int(line);line=next(lines,'')
-            if size!=len(line.encode()):raise Rejected('PROVIDER_PROTOCOL_ERROR')
+            if len(line)>8:raise Rejected('PROVIDER_PROTOCOL_ERROR')
+            line=next(lines,'')
         try:chunk=strict_json(line)
         except (ValueError,UnicodeError,RecursionError):raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
-        bounded(chunk)
+        bounded(chunk,max_bytes=MAX_QUERY_STREAM_BYTES)
         if not isinstance(chunk,list):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
         for item in chunk:
             if not isinstance(item,list) or len(item)<3 or item[0]!='wrb.fr':continue
@@ -129,7 +136,7 @@ def parse_query(stream,allowed_sources):
             if not isinstance(item[2],str):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
             try:inner=strict_json(item[2])
             except (ValueError,RecursionError):raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
-            bounded(inner)
+            bounded(inner,max_bytes=MAX_QUERY_STREAM_BYTES)
             if not isinstance(inner,list) or not inner or not isinstance(inner[0],list) or len(inner[0])<5:
                 raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
             row=inner[0];info=row[4]
@@ -189,7 +196,7 @@ class GeminiResearchProvider:
         params=[[[[sid]] for sid in source_ids],query,None,[2,None,[1]],str(uuid.uuid4())]
         try:result=parse_query(self.transport.request(ReadRequest('stream',QUERY_ENDPOINT,f'/notebook/{notebook_id}',params)),source_ids)
         except Rejected as e:
-            if getattr(self.transport,'provider_kind','')=='GEMINI_HTTPS_UNVERIFIED':
+            if getattr(self.transport,'provider_kind','') in ('GEMINI_HTTPS_UNVERIFIED','GEMINI_BROWSER_UNVERIFIED'):
                 e.outcome='UNKNOWN'
                 if e.code=='AUTHENTICATION_EXPIRED':self.transport.invalidate_auth()
             raise

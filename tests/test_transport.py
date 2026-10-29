@@ -131,6 +131,13 @@ class TransportTests(unittest.TestCase):
         self.prime();self.http.next_reply=HttpReply(200,{'content-type':'application/json'},b'\xff')
         self.assertEqual(self.code('PROVIDER_PROTOCOL_ERROR',self.query).outcome,'UNKNOWN')
 
+    def test_34_unicode_frame_marker_is_not_utf8_length_contract(self):
+        payload=['SYNTHETIC Tiếng Việt \u2028 notebook']
+        line=json.dumps([['wrb.fr',LIST_RPC,json.dumps(payload,ensure_ascii=False)]],ensure_ascii=False)
+        marker=len(line.encode('utf-16-le'))//2
+        self.assertNotEqual(marker,len(line.encode('utf-8')))
+        self.assertEqual(rpc_result((")]}'\n"+str(marker)+'\n'+line+'\n').encode(),LIST_RPC),payload)
+
 class HTTPServiceTests(unittest.TestCase):
     def test_29_actual_mcp_ipc_http_adapter_process_path(self):
         state=ROOT/'state';state.mkdir(exist_ok=True)

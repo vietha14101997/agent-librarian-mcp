@@ -17,6 +17,15 @@ from .gemini import LIST_RPC,GET_RPC,SOURCE_RPC,QUERY_ENDPOINT,bounded,parse_dis
 from .session import GOOGLE_HOSTS,page_session
 
 RPC_PATH='/_/LabsTailwindUi/data/batchexecute'
+# Upstream core/auth.py and core/base.py at the reviewed revision: minimal
+# headers can falsely redirect valid Google cookies to sign-in.
+PAGE_FETCH_HEADERS={
+    'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language':'en-US,en;q=0.9',
+    'Sec-Fetch-Dest':'document','Sec-Fetch-Mode':'navigate',
+    'Sec-Fetch-Site':'none','Sec-Fetch-User':'?1',
+}
 @dataclass(repr=False,frozen=True)
 class HttpReply:
     status:int
@@ -61,14 +70,15 @@ def frames(body):
     try:stream=body.decode('utf-8')
     except UnicodeError:raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
     if not stream.startswith(")]}'"):raise Rejected('PROVIDER_PROTOCOL_ERROR')
-    lines=iter(stream[4:].splitlines())
+    lines=iter(stream[4:].split('\n'))
     for line in lines:
         line=line.strip()
         if not line:continue
         if line.isdigit():
             if len(line)>8:raise Rejected('PROVIDER_PROTOCOL_ERROR')
-            count=int(line);line=next(lines,'')
-            if count!=len(line.encode()):raise Rejected('PROVIDER_PROTOCOL_ERROR')
+            # Reviewed upstream uses this as a chunk marker, not a UTF-8
+            # contract. Live Unicode responses can declare another unit.
+            line=next(lines,'')
         try:value=strict_json(line)
         except (ValueError,RecursionError):raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
         bounded(value)
@@ -106,7 +116,9 @@ class GeminiHTTPS:
             'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
     def _http(self,method,path,s,body=None,html=False,query=False):
         self._check();limit=2*1024*1024 if html else 131072
-        try:r=self.sender.send(method,path,self._headers(s),body,self.timeout,limit)
+        headers=self._headers(s)
+        if html:headers.update(PAGE_FETCH_HEADERS)
+        try:r=self.sender.send(method,path,headers,body,self.timeout,limit)
         except Rejected:raise
         except (TimeoutError,socket.timeout):raise Rejected('PROVIDER_TIMEOUT_OUTCOME_UNKNOWN' if query else 'PROVIDER_TIMEOUT') from None
         except (OSError,http.client.HTTPException,ssl.SSLError):raise Rejected('QUERY_OUTCOME_UNKNOWN' if query else 'HTTP_TRANSPORT_FAILURE') from None
