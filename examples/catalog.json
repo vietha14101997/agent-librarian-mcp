@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "root_id": "synthetic-example-root",
+  "documents": [
+    {
+      "document_id": "synthetic-document",
+      "title": "Synthetic queue decision",
+      "relative_path": "decision.md",
+      "content_sha256": "f55137aad69e79b0e2b98b6e56a041a28b6c755489be9f2ace661a56941f323f",
+      "source_identity": {
+        "system": "synthetic-example",
+        "id": "synthetic-original-01",
+        "evidence": "Repository-owned non-sensitive example fixture"
+      },
+      "source_version": "synthetic-v1",
+      "document_kind": "ORIGINAL",
+      "authority_status": "STATIC_ACCEPTED",
+      "disclosure_status": "UNKNOWN",
+      "related_document_ids": [],
+      "supersedes": [],
+      "last_indexed_revision": "f55137aad69e79b0e2b98b6e56a041a28b6c755489be9f2ace661a56941f323f",
+      "authority_evidence": "Synthetic static acceptance; not a real owner decision"
+    }
+  ],
+  "issues": [],
+  "duplicates": []
+}

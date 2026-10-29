@@ -1,0 +1,9 @@
+# Disabled example. Replace the absolute interpreter path after local installation.
+# No active Codex settings are modified by this file.
+[mcp_servers.agent_librarian]
+command = "/ABSOLUTE/PATH/agent-librarian-mcp/.venv/bin/python"
+args = ["-I", "-B", "-m", "agent_librarian", "mcp-serve"]
+enabled = false
+enabled_tools = ["librarian_list_notebooks", "librarian_get_notebook", "librarian_query", "librarian_get_source"]
+# The packaged policy is independently disabled. Use explicit synthetic policy,
+# fixture and control-directory options for a deliberate local demonstration.

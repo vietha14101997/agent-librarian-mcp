@@ -1,0 +1,26 @@
+{
+  "origin": "Owner-authorized KN-MCP-02 workspace artifact; no separate Git revision",
+  "components": [
+    {
+      "source": "gateway/server.py",
+      "sha256": "9a5bb9ae701eeab1a326ca1b93fd52dea516f93aa3e8d63cede748dfeba03dfd"
+    },
+    {
+      "source": "gateway/fake_worker.py",
+      "sha256": "16b071cb7e7217c7bfa9aedb5bb362d71930e92a1f60a9b7994e8d103ba3eb88"
+    },
+    {
+      "source": "tests/test_gateway.py",
+      "sha256": "32fcdb8938287e5caa239dd9eedfba4404cbd4d1fe1dbe2ee3e9e3ce4e81d56c"
+    },
+    {
+      "source": "config/approved.synthetic.json",
+      "sha256": "0bf8ffe4cb23b9abd64c84d93d2ca8056cec2325e2181e773ff4ba2b2220ae58"
+    },
+    {
+      "source": "tests/fixtures.synthetic.json",
+      "sha256": "1e960abe833282ddab32aadecebc03cb080ba336b2311c31df66f20b71b7234d"
+    }
+  ],
+  "adaptation": "Split and retain policy/projection/validation and killable fake provider; replace hand-written transport with official SDK; provide explicit ResearchProvider methods."
+}

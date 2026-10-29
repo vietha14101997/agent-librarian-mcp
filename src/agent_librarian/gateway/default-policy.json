@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "enabled": false,
+  "account_id": "synthetic-research-01",
+  "notebooks": {
+    "notebook-approved": {
+      "title": "Synthetic engineering decisions",
+      "sources": {
+        "source-approved": "Synthetic queue decision"
+      }
+    },
+    "notebook-second": {
+      "title": "Synthetic second notebook",
+      "sources": {
+        "source-second": "Synthetic second source"
+      }
+    }
+  },
+  "query_max_chars": 2000,
+  "timeout_seconds": 1.0
+}

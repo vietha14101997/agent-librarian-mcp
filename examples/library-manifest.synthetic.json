@@ -1,0 +1,16 @@
+{
+  "documents": [
+    {
+      "id": "synthetic-document",
+      "title": "Synthetic queue decision",
+      "path": "decision.md",
+      "sha256": "f55137aad69e79b0e2b98b6e56a041a28b6c755489be9f2ace661a56941f323f",
+      "authority": "STATIC_ACCEPTED",
+      "kind": "ORIGINAL",
+      "source_milestone": "SYNTHETIC-01",
+      "provenance": "Synthetic explicit selection evidence",
+      "related": [],
+      "open_gates": "No real disclosure authorization"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "account_id": "synthetic-research-01",
+  "mode": "normal",
+  "notebooks": {
+    "notebook-approved": {
+      "title": "Synthetic engineering decisions",
+      "sources": {
+        "source-approved": {
+          "title": "Synthetic queue decision",
+          "content": "The synthetic system uses a bounded queue."
+        },
+        "source-unapproved": {
+          "title": "Not approved",
+          "content": "Should not be returned."
+        }
+      }
+    },
+    "notebook-second": {
+      "title": "Synthetic second notebook",
+      "sources": {
+        "source-second": {
+          "title": "Synthetic second source",
+          "content": "Second synthetic decision."
+        }
+      }
+    },
+    "notebook-unapproved": {
+      "title": "Must not disclose this title",
+      "sources": {}
+    }
+  }
+}

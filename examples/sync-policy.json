@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "account_id": "synthetic-account",
+  "notebooks": [
+    "synthetic-notebook"
+  ],
+  "mappings": [
+    {
+      "document_id": "synthetic-document",
+      "notebook_id": "synthetic-notebook",
+      "drive_file_id": "synthetic-drive"
+    }
+  ],
+  "approvals": [
+    {
+      "document_id": "synthetic-document",
+      "content_sha256": "f55137aad69e79b0e2b98b6e56a041a28b6c755489be9f2ace661a56941f323f",
+      "account_id": "synthetic-account",
+      "notebook_id": "synthetic-notebook",
+      "approved_for": [
+        "drive",
+        "notebook"
+      ],
+      "approval_id": "SYNTHETIC-ONLY-NOT-REAL-APPROVAL",
+      "revoked": false
+    }
+  ],
+  "remote_sources": [],
+  "prior_sync": [],
+  "verified_drive_revisions": [
+    {
+      "document_id": "synthetic-document",
+      "drive_file_id": "synthetic-drive",
+      "content_sha256": "f55137aad69e79b0e2b98b6e56a041a28b6c755489be9f2ace661a56941f323f"
+    }
+  ]
+}
