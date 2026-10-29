@@ -37,22 +37,33 @@ class FixedTLS:
     def __init__(self,host):
         if host not in GOOGLE_HOSTS:raise Rejected('HTTP_DESTINATION_REJECTED')
         self.host=host;self.context=ssl.create_default_context();self.active=None
-    def send(self,method,path,headers,body,timeout,limit):
+    def send(self,method,path,headers,body,timeout,limit,projector=False):
         if method not in ('GET','POST') or not path.startswith('/') or path.startswith('//') or '\r' in path or '\n' in path:raise Rejected('HTTP_DESTINATION_REJECTED')
         started=time.monotonic();conn=http.client.HTTPSConnection(self.host,timeout=timeout,context=self.context);self.active=conn
         try:
             conn.request(method,path,body=body,headers=headers);response=conn.getresponse()
             content_length=response.getheader('Content-Length')
             if content_length is not None and (not content_length.isdigit() or int(content_length)>limit):raise Rejected('HTTP_RESPONSE_LIMIT')
-            result=bytearray()
-            while True:
-                remaining=timeout-(time.monotonic()-started)
-                if remaining<=0:raise TimeoutError()
-                if conn.sock is not None:conn.sock.settimeout(remaining)
-                block=response.read1(min(8192,limit+1-len(result)))
-                if not block:break
-                result.extend(block)
-                if len(result)>limit:raise Rejected('HTTP_RESPONSE_LIMIT')
+            def blocks():
+                total=0
+                while True:
+                    remaining=timeout-(time.monotonic()-started)
+                    if remaining<=0:raise TimeoutError()
+                    if conn.sock is not None:conn.sock.settimeout(remaining)
+                    block=response.read1(min(8192,limit+1-total))
+                    if not block:break
+                    total+=len(block)
+                    if total>limit:raise Rejected('HTTP_RESPONSE_LIMIT')
+                    yield block
+            if projector is not False and response.status==200:
+                content_type=(response.getheader('Content-Type') or '').split(';')[0].strip().lower()
+                if content_type not in ('application/json','application/json+protobuf'):raise Rejected('HTTP_CONTENT_TYPE_REJECTED')
+                if (response.getheader('Content-Encoding') or 'identity').lower()!='identity':raise Rejected('HTTP_ENCODING_REJECTED')
+                from .wire import project_response
+                result=project_response(blocks(),projector)
+            else:
+                result=bytearray()
+                for block in blocks():result.extend(block)
             # Duplicate security-sensitive headers fail instead of being collapsed.
             values={}
             for k,v in response.getheaders():
@@ -63,6 +74,8 @@ class FixedTLS:
         finally:
             conn.close()
             if self.active is conn:self.active=None
+    def send_projected(self,method,path,headers,body,timeout,limit,rpc_method):
+        return self.send(method,path,headers,body,timeout,limit,projector=rpc_method)
     def close(self):
         if self.active:self.active.close()
 
@@ -85,9 +98,10 @@ def frames(body):
         if not isinstance(value,list):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
         yield value
 
-def rpc_result(body,method):
+def rpc_result(body,method,large_source=False):
     results=[]
-    for frame in frames(body):
+    from .wire import frames as incremental_frames,FRAME_BYTES
+    for frame in incremental_frames([body]):
         for item in frame:
             if not isinstance(item,list) or len(item)<3 or item[0]!='wrb.fr':continue
             if item[1]!=method:raise Rejected('PROVIDER_RPC_MISMATCH')
@@ -96,7 +110,7 @@ def rpc_result(body,method):
             if not isinstance(item[2],str):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
             try:data=strict_json(item[2])
             except (ValueError,RecursionError):raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
-            results.append(bounded(data))
+            results.append(bounded(data,max_bytes=FRAME_BYTES if large_source else 131072))
     if len(results)!=1:raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
     return results[0]
 
@@ -114,11 +128,15 @@ class GeminiHTTPS:
             'Referer':'https://'+s.host+'/','X-Same-Domain':'1','X-Goog-Csrf-Token':s.csrf,
             'Cookie':s.cookie_header(),'Accept-Encoding':'identity',
             'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
-    def _http(self,method,path,s,body=None,html=False,query=False):
-        self._check();limit=2*1024*1024 if html else 131072
+    def _http(self,method,path,s,body=None,html=False,query=False,rpc_method=None):
+        from .wire import WIRE_BYTES,project_response
+        self._check();limit=2*1024*1024 if html else WIRE_BYTES
         headers=self._headers(s)
         if html:headers.update(PAGE_FETCH_HEADERS)
-        try:r=self.sender.send(method,path,headers,body,self.timeout,limit)
+        try:
+            if not html and hasattr(self.sender,'send_projected'):
+                r=self.sender.send_projected(method,path,headers,body,self.timeout,limit,rpc_method)
+            else:r=self.sender.send(method,path,headers,body,self.timeout,limit)
         except Rejected:raise
         except (TimeoutError,socket.timeout):raise Rejected('PROVIDER_TIMEOUT_OUTCOME_UNKNOWN' if query else 'PROVIDER_TIMEOUT') from None
         except (OSError,http.client.HTTPException,ssl.SSLError):raise Rejected('QUERY_OUTCOME_UNKNOWN' if query else 'HTTP_TRANSPORT_FAILURE') from None
@@ -132,12 +150,14 @@ class GeminiHTTPS:
         content_type=r.headers.get('content-type','').split(';')[0].strip().lower()
         if content_type not in (('text/html',) if html else ('application/json','application/json+protobuf')):raise Rejected('HTTP_CONTENT_TYPE_REJECTED')
         if r.headers.get('content-encoding','identity').lower()!='identity':raise Rejected('HTTP_ENCODING_REJECTED')
+        if not html and not hasattr(self.sender,'send_projected'):
+            return project_response([r.body],rpc_method)
         return r.body
     def _rpc(self,s,method,path,params):
         fields={'rpcids':method,'source-path':path,'bl':s.build_label,'hl':'en','rt':'c','f.sid':s.session_id}
         envelope=[[[method,json.dumps(params,separators=(',',':'),ensure_ascii=False),None,'generic']]]
         body=(urlencode({'f.req':json.dumps(envelope,separators=(',',':'),ensure_ascii=False),'at':s.csrf})+'&').encode()
-        try:return rpc_result(self._http('POST',RPC_PATH+'?'+urlencode(fields),s,body),method)
+        try:return rpc_result(self._http('POST',RPC_PATH+'?'+urlencode(fields),s,body,rpc_method=method),method,large_source=method==SOURCE_RPC)
         except Rejected as e:
             if e.code=='AUTHENTICATION_EXPIRED':self.sessions.invalidate()
             raise

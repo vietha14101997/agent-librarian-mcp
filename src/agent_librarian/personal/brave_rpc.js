@@ -47,7 +47,8 @@
     const body = 'f.req=' + encodeURIComponent(JSON.stringify(envelope)) + '&at=' + encodeURIComponent(csrf) + '&';
     const controller = new AbortController();
     const entry = {controller, result: null};
-    const responseLimit = stream ? 2097152 : 131072;
+    const wire = __LIBRARIAN_WIRE__;
+    const responseLimit = 67108864;
     pending.set(input.id, entry);
     (async () => {
       const timer = setTimeout(() => controller.abort(), input.timeout_ms);
@@ -60,20 +61,11 @@
         if (![200, 401, 403].includes(response.status)) fail('HTTP_STATUS_REJECTED');
         if ([401, 403].includes(response.status)) { entry.result = {status: 'DONE', http_status: response.status, text: ''}; return; }
         if (![401, 403].includes(response.status) && !['application/json', 'application/json+protobuf'].includes(contentType)) fail('HTTP_CONTENT_TYPE_REJECTED');
-        const reader = response.body.getReader(), parts = [];
-        for (;;) {
-          const {done, value} = await reader.read();
-          if (done) break;
-          total += value.byteLength;
-          if (total > responseLimit) { await reader.cancel(); fail('HTTP_RESPONSE_LIMIT'); }
-          parts.push(value);
-        }
-        const bytes = new Uint8Array(total);
-        let offset = 0;
-        for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
-        entry.result = {status: 'DONE', http_status: response.status, text: new TextDecoder('utf-8', {fatal: true}).decode(bytes)};
+        const projected=await wire.project(response.body.getReader(),stream?null:r.method);
+        total=projected.bytes_read;
+        entry.result={status:'DONE',http_status:response.status,text:projected.text,bytes_read:total,frames:projected.frames};
       } catch (error) {
-        entry.result = {status: 'ERROR', code: error?.librarianCode || 'BROWSER_OUTCOME_UNKNOWN', http_status: status, bytes_read: total, response_limit: responseLimit};
+        entry.result = {status: 'ERROR', code: error?.librarianCode || 'BROWSER_OUTCOME_UNKNOWN', http_status: status, bytes_read: error?.bytes_read??total, frames:error?.frames??0, frame_limit:error?.frame_limit??2097152, wire_limit:responseLimit};
       } finally { clearTimeout(timer); }
     })();
     return reply({status: 'DISPATCHED'});

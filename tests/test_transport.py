@@ -76,7 +76,7 @@ class TransportTests(unittest.TestCase):
         self.code('HTTP_CONTENT_TYPE_REJECTED',self.query)
     def test_13_response_limit(self):
         self.prime();self.http.next_reply=HttpReply(200,{'content-type':'application/json'},b'x'*131073)
-        self.code('HTTP_RESPONSE_LIMIT',self.query)
+        self.code('PROVIDER_PROTOCOL_ERROR',self.query) # malformed framing, below the independent wire budget
     def test_14_compression_not_accepted(self):
         self.prime();self.http.next_reply=HttpReply(200,{'content-type':'application/json','content-encoding':'gzip'},b'x')
         self.code('HTTP_ENCODING_REJECTED',self.query)

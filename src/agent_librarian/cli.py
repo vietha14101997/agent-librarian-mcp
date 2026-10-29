@@ -70,6 +70,14 @@ def parser():
     c.add_argument('--account-email',help='Confirm the Google account shown in the creation proposal')
     c.add_argument('--operation-id',help='Use the ID returned in the creation proposal')
     c.add_argument('--experimental-browser-create',action='store_true',help='Explicitly opt into live-unverified creation; default is manual creation')
+    c=sub.add_parser('sources',help='CLI-only file imports; never exposed through research MCP')
+    c.add_argument('source_action',choices=('plan','add','import','status','check'))
+    c.add_argument('--project',required=True);c.add_argument('--notebook-id',required=True)
+    c.add_argument('--home');c.add_argument('--state-dir');c.add_argument('--path');c.add_argument('--plan')
+    c.add_argument('--output',help='Write an offline plan outside its source root')
+    c.add_argument('--relative-names',action='store_true',help='Encode relative paths with __ to avoid basename collisions')
+    c.add_argument('--json-as-markdown',action='store_true',help='Wrap unchanged JSON bytes in a Markdown code fence')
+    c.add_argument('--approve',action='store_true',help='Approve mutation for this exact reviewed file/plan; default is preview')
     c=sub.add_parser('auth',help='Explicit Personal Local Brave login and Keychain session')
     auth=c.add_subparsers(dest='auth_action',required=True)
     for action in ('login','status','logout'):
@@ -92,7 +100,8 @@ def parser():
         a=research.add_parser(action);a.add_argument('--state-dir');a.add_argument('--project');a.add_argument('--installation-home');a.add_argument('--notebook-id')
         if action in ('approve','query'):a.add_argument('--question',required=True)
         if action=='approve':a.add_argument('--ack-history',action='store_true')
-        if action=='source':a.add_argument('--source-id',required=True)
+        if action=='source':
+            a.add_argument('--source-id',required=True);a.add_argument('--offset',type=int,default=0);a.add_argument('--max-chars',type=int,default=16000)
     for command in ('provider-runtime','provider-status'):
         c=sub.add_parser(command,help='Protected deployment runtime; no caller credential inputs');c.add_argument('--config',required=True)
     c=sub.add_parser('provider-service',help='Restricted Unix service, synthetic credentials and mocked provider only')
@@ -151,6 +160,13 @@ def main(argv=None):
                         result['mcp_configuration_verified']=any(c['check']=='mcp_registration' and c['ok'] for c in result['checks'])
             except Rejected as e:raise CatalogError(e.code) from None
             print(json.dumps(result));return 2 if args.setup_action=='doctor' and result['status']=='NEEDS_ATTENTION' else 0
+        if args.command=='sources':
+            from .personal.ingestion_cli import dispatch as ingest
+            from .gateway.common import Rejected
+            try:result=ingest(args)
+            except (Rejected,OSError,ValueError,KeyError,TypeError) as e:
+                print(json.dumps({'status':'ERROR','code':e.code if isinstance(e,Rejected) else 'IMPORT_INPUT_INVALID'}),file=sys.stderr);return 2
+            print(json.dumps(result,ensure_ascii=False,allow_nan=False));return 2 if result.get('status')=='ERROR' else 0
         if args.command in ('auth','notebooks','research','browser'):
             from .personal.commands import dispatch
             from .gateway.common import Rejected

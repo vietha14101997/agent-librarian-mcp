@@ -30,8 +30,8 @@ def owned_json(path,private=False):
 class SecretConfinement:
     """Exact known-canary redaction plus normal safe projection, not general DLP."""
     def __init__(self,provider,secret):self.provider=provider;self.secret=secret
-    def scrub(self,value):
-        bounded(value)
+    def scrub(self,value,source=False):
+        bounded(value,max_bytes=2*1024*1024 if source else 131072)
         def walk(x):
             if isinstance(x,str):
                 secrets=self.secret() if callable(self.secret) else (self.secret,)
@@ -45,7 +45,7 @@ class SecretConfinement:
     def list_notebooks(self):return self.scrub(self.provider.list_notebooks())
     def get_notebook(self,notebook_id):return self.scrub(self.provider.get_notebook(notebook_id))
     def query(self,notebook_id,query,source_ids):return self.scrub(self.provider.query(notebook_id,query,source_ids))
-    def get_source(self,notebook_id,source_id):return self.scrub(self.provider.get_source(notebook_id,source_id))
+    def get_source(self,notebook_id,source_id):return self.scrub(self.provider.get_source(notebook_id,source_id),source=True)
     def close(self):self.provider.close()
 
 class ProviderService:

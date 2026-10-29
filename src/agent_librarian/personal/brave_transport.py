@@ -19,7 +19,12 @@ CONNECTION='browser-connection.json'
 SAFE_ERRORS={'BRAVE_NOTEBOOK_HOMEPAGE_REQUIRED','BROWSER_REQUEST_LOST','BROWSER_REQUEST_REJECTED',
     'FORBIDDEN_OPERATION','BRAVE_PAGE_CONTEXT_UNAVAILABLE','ACCOUNT_IDENTITY_MISMATCH',
     'HTTP_STATUS_REJECTED','HTTP_CONTENT_TYPE_REJECTED','HTTP_RESPONSE_LIMIT',
-    'BROWSER_OUTCOME_UNKNOWN','BROWSER_CONTEXT_FAILURE','BRAVE_AUTOMATION_UNAVAILABLE'}
+    'HTTP_FRAME_LIMIT','HTTP_FRAME_COUNT_LIMIT','HTTP_WIRE_BUDGET_LIMIT','PROVIDER_PROJECTION_LIMIT',
+    'PROVIDER_PROTOCOL_ERROR','PROVIDER_RESPONSE_LIMIT','PROVIDER_RPC_MISMATCH',
+    'UNIMPLEMENTED_SOURCE_GAP','AUTHENTICATION_EXPIRED',
+    'BROWSER_OUTCOME_UNKNOWN','BROWSER_CONTEXT_FAILURE','BRAVE_AUTOMATION_UNAVAILABLE',
+    'IMPORT_UPLOAD_URL_REJECTED','IMPORT_UPLOAD_URL_MISSING','IMPORT_ARGUMENTS_INVALID',
+    'IMPORT_STAGE_INVALID','IMPORT_HTTP_REJECTED','IMPORT_OUTCOME_UNKNOWN'}
 
 def osascript(source):
     try:
@@ -52,7 +57,7 @@ class BraveTransport:
         self.notebooks=notebooks;self.timeout=timeout;self.runner=runner;self.clock=clock;self.sleep=sleep;self.closed=False;self.reqid=100000
         self.disabled=disabled
         if not .05<=timeout<=30:raise Rejected('HTTP_CONFIGURATION_INVALID')
-        self.javascript=Path(__file__).with_name('brave_rpc.js').read_text()
+        self.javascript=Path(__file__).with_name('brave_rpc.js').read_text().replace('__LIBRARIAN_WIRE__',Path(__file__).with_name('wire.js').read_text())
     def _execute(self,payload):
         javascript=self.javascript.replace('__LIBRARIAN_INPUT__',json.dumps(payload,ensure_ascii=True,separators=(',',':')))
         c=self.connection
@@ -65,7 +70,7 @@ return String(t.execute({javascript:%s}));
         if not isinstance(result,dict):raise Rejected('BROWSER_RESPONSE_INVALID')
         if result.get('status')=='ERROR':
             error=Rejected(result.get('code') if result.get('code') in SAFE_ERRORS else 'BROWSER_CONTEXT_FAILURE')
-            error.diagnostics={k:result[k] for k in ('http_status','bytes_read','response_limit') if type(result.get(k)) is int}
+            error.diagnostics={k:result[k] for k in ('http_status','bytes_read','response_limit','frames','frame_limit','wire_limit') if type(result.get(k)) is int}
             raise error
         return result
     def account_identity(self):
@@ -95,8 +100,8 @@ return String(t.execute({javascript:%s}));
                 if reply.get('http_status') in (401,403):raise Rejected('AUTHENTICATION_EXPIRED')
                 if reply.get('http_status')!=200 or not isinstance(reply.get('text'),str):raise Rejected('BROWSER_RESPONSE_INVALID')
                 body=reply['text'].encode()
-                if len(body)>(MAX_QUERY_STREAM_BYTES if r.kind=='stream' else 131072):raise Rejected('HTTP_RESPONSE_LIMIT')
-                return rpc_result(body,r.method) if r.kind=='rpc' else reply['text']
+                if len(body)>(MAX_QUERY_STREAM_BYTES if r.kind=='stream' or r.method=='hizoJc' else 131072):raise Rejected('HTTP_RESPONSE_LIMIT')
+                return rpc_result(body,r.method,large_source=r.method=='hizoJc') if r.kind=='rpc' else reply['text']
             raise Rejected('PROVIDER_TIMEOUT_OUTCOME_UNKNOWN' if r.kind=='stream' else 'PROVIDER_TIMEOUT')
         except Rejected as error:
             if r.kind=='stream' and dispatched:error.outcome='UNKNOWN'

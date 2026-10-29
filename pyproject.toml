@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "agent-librarian-mcp"
-version = "0.6.0"
+version = "0.7.0"
 description = "Portable MCP research and owner-directed project Notebook onboarding"
 readme = "README.md"
 requires-python = ">=3.11"

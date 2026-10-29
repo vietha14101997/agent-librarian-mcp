@@ -63,6 +63,19 @@ class IPCTests(unittest.TestCase):
         with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as s:
             s.settimeout(2);s.connect(str(self.sock));send_frame(s,request);return read_frame(s,131072)
     def query(self,client):return client.query('notebook-approved','Synthetic question',['source-approved'])
+    def test_source_pages_through_both_service_and_client_gateways(self):
+        content='Synthetic source passage. '*1500
+        self.fixture['notebooks']['notebook-approved']['sources']['source-approved']['content']=content;self.restart()
+        front=Gateway(self.policy_path,self.fixture_path,self.dir,provider=self.client());pieces=[];offset=0
+        try:
+            while True:
+                result=front.call(NAMES[3],{'notebook_id':'notebook-approved','source_id':'source-approved','offset':offset})
+                self.assertEqual(result['status'],'OK',result);pieces.append(result['content'])
+                if result['next_offset'] is None:break
+                offset=result['next_offset']
+            self.assertEqual(''.join(pieces),content)
+        finally:front.close()
+
     def test_01_gateway_never_receives_canary(self):
         self.fixture['answer']='Synthetic response contains {{SERVICE_CANARY}}.';self.restart()
         front=Gateway(self.policy_path,self.fixture_path,self.dir,provider=self.client())

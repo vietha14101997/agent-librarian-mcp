@@ -64,7 +64,7 @@ def dispatch(args):
         if args.research_action=='approve':return state.approve_query(args.question,args.ack_history,nb)
         arguments={'notebook_id':nb}
         if args.research_action=='query':arguments['query']=args.question;name=NAMES[2]
-        elif args.research_action=='source':arguments['source_id']=args.source_id;name=NAMES[3]
+        elif args.research_action=='source':arguments.update(source_id=args.source_id,offset=getattr(args,'offset',0),max_chars=getattr(args,'max_chars',16000));name=NAMES[3]
         else:name=NAMES[1]
         return ProjectGateway(args.project,home,path).call(name,arguments)
     if getattr(args,'notebook_id',None):raise Rejected('PROJECT_REQUIRED_WITH_NOTEBOOK_ID')
@@ -73,6 +73,6 @@ def dispatch(args):
     if not book:raise Rejected('NOTEBOOK_SELECTION_REQUIRED')
     arguments={'notebook_id':book['notebook_id']}
     if args.research_action=='query':arguments['query']=args.question;name=NAMES[2]
-    elif args.research_action=='source':arguments['source_id']=args.source_id;name=NAMES[3]
+    elif args.research_action=='source':arguments.update(source_id=args.source_id,offset=getattr(args,'offset',0),max_chars=getattr(args,'max_chars',16000));name=NAMES[3]
     else:name=NAMES[1]
     return direct_call(state,name,arguments)

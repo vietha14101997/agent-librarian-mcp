@@ -1,7 +1,7 @@
 """Executable research policy adapted from KN-MCP-02, not a credential boundary."""
 import json, sys, threading, time, uuid
 from pathlib import Path
-from .common import NAMES, Rejected, load_policy, exact, ident, text, URL_PATH
+from .common import MAX_RESPONSE, NAMES, Rejected, load_policy, exact, ident, text, URL_PATH
 from ..providers.fake import FakeProvider
 
 class Gateway:
@@ -26,7 +26,7 @@ class Gateway:
             exact(args,());return {}
         if name==NAMES[1]:exact(args,('notebook_id',))
         elif name==NAMES[2]:exact(args,('notebook_id','query'),('source_ids',))
-        elif name==NAMES[3]:exact(args,('notebook_id','source_id'))
+        elif name==NAMES[3]:exact(args,('notebook_id','source_id'),('offset','max_chars'))
         nb=ident(args['notebook_id'])
         if nb not in self.policy['notebooks']:
             raise Rejected('NOTEBOOK_NOT_ALLOWED')
@@ -36,6 +36,10 @@ class Gateway:
             sid=ident(args['source_id'])
             if sid not in allowed:raise Rejected('SOURCE_NOT_ALLOWED')
             result['source_id']=sid
+            for key,default,minimum,maximum in (('offset',0,0,1048576),('max_chars',16000,1,16000)):
+                value=args.get(key,default)
+                if type(value) is not int or not minimum<=value<=maximum:raise Rejected('INVALID_ARGUMENTS')
+                if key in args:result[key]=value
         if name==NAMES[2]:
             q=args['query']
             if not isinstance(q,str) or not q.strip() or len(q)>self.policy['query_max_chars']:
@@ -91,8 +95,11 @@ class Gateway:
             return dict(base,title=text(data.get('title')),sources=selected)
         if name==NAMES[3]:
             if data.get('source_id')!=args['source_id']:raise Rejected('PROVIDER_SOURCE_MISMATCH')
+            page=self.source_page(args,data)
+            content=text(data.get('content'),max_chars=1048576)
+            if 'source_page' not in data:content=content[args.get('offset',0):args.get('offset',0)+args.get('max_chars',16000)]
             return dict(base,source_id=args['source_id'],title=text(data.get('title')),
-                content=text(data.get('content')),verification_status='SOURCE_NOT_VERIFIED',
+                content=content,**page,verification_status='SOURCE_NOT_VERIFIED',
                 verification_limitations=['Identity matched approved notebook/source; content provenance/revision not attested.'])
         citations=data.get('citations',[])
         if not isinstance(citations,list) or len(citations)>100:raise Rejected('PROVIDER_STRUCTURE_INVALID')
@@ -114,6 +121,20 @@ class Gateway:
             verification_limitations=['Provider source associations returned; semantic support and remote revision not independently verified.',
                 'A live query may persist conversation history; fake execution does not.'])
 
+    def source_page(self,args,data):
+        if 'source_page' in data:
+            p=data['source_page'];exact(p,('offset','total_chars','truncated','next_offset'))
+            start=args.get('offset',0);size=args.get('max_chars',16000);total=p['total_chars']
+            if type(total) is not int or not start<=total<=1048576:raise Rejected('PROVIDER_STRUCTURE_INVALID')
+            end=min(total,start+size)
+            if (p['offset']!=start or type(p['truncated']) is not bool or p['truncated']!=(end<total) or p['next_offset']!=(end if end<total else None)
+                    or len(text(data.get('content')))!=end-start):raise Rejected('PROVIDER_STRUCTURE_INVALID')
+            return p
+        content=data.get('content');total=len(text(content,max_chars=1048576));offset=args.get('offset',0)
+        if offset>total:raise Rejected('INVALID_ARGUMENTS')
+        end=min(total,offset+args.get('max_chars',16000))
+        return {'offset':offset,'total_chars':total,'truncated':end<total,'next_offset':end if end<total else None}
+
     def call(self,name,args):
         request_id=uuid.uuid4().hex
         started=time.monotonic();code='INTERNAL_ERROR'
@@ -126,17 +147,22 @@ class Gateway:
                 if name==NAMES[0]:raw=self.provider.list_notebooks()
                 elif name==NAMES[1]:raw=self.provider.get_notebook(**checked)
                 elif name==NAMES[2]:raw=self.provider.query(**checked)
-                elif name==NAMES[3]:raw=self.provider.get_source(**checked)
+                elif name==NAMES[3]:
+                    raw=self.provider.get_source_page(**checked) if hasattr(self.provider,'get_source_page') else self.provider.get_source(notebook_id=checked['notebook_id'],source_id=checked['source_id'])
                 else:raise Rejected('FORBIDDEN_OPERATION')
                 result=self.project(name,checked,raw)
                 if self.disabled():raise Rejected('SERVICE_DISABLED')
             finally:self.busy.release()
+            if len(json.dumps(result,ensure_ascii=False,allow_nan=False).encode())>MAX_RESPONSE:raise Rejected('PROVIDER_PROJECTION_LIMIT')
             code='OK'
             return result
         except Rejected as e:
             code=e.code
-            return dict(status='ERROR',code=code,provider_status='NOT_ACCEPTED',
+            result=dict(status='ERROR',code=code,provider_status='NOT_ACCEPTED',
                 outcome=getattr(e,'outcome','UNKNOWN' if code in {'PROVIDER_TIMEOUT_OUTCOME_UNKNOWN','QUERY_OUTCOME_UNKNOWN'} else 'NOT_VERIFIED'))
+            if hasattr(e,'diagnostics'):
+                result['diagnostics']={k:v for k,v in e.diagnostics.items() if k in ('http_status','bytes_read','frames','frame_limit','wire_limit','response_limit') and type(v) is int}
+            return result
         except Exception:
             return dict(status='ERROR',code='INTERNAL_ERROR',provider_status='NOT_ACCEPTED')
         finally:

@@ -38,8 +38,8 @@ def exact(obj, required, optional=()):
     if not isinstance(obj, dict) or set(obj)-set(required)-set(optional) or set(required)-set(obj):
         raise Rejected('INVALID_ARGUMENTS')
 
-def text(value):
-    if not isinstance(value, str) or len(value) > MAX_TEXT:
+def text(value, max_chars=MAX_TEXT):
+    if not isinstance(value, str) or len(value) > max_chars:
         raise Rejected('PROVIDER_STRUCTURE_INVALID')
     if re.search(r'(?i)<(?:html|script)|WIZ_global_data', value):
         raise Rejected('PROVIDER_CONTENT_REJECTED')
@@ -90,7 +90,9 @@ TOOLS = [
              'source_ids':dict(type='array',items=ID_SCHEMA,minItems=1,maxItems=100,uniqueItems=True)},('notebook_id','query')),
          annotations=dict(readOnlyHint=False,destructiveHint=False,openWorldHint=False)),
     dict(name=NAMES[3],description='Read one approved source from its approved notebook.',
-         inputSchema=schema({'notebook_id':ID_SCHEMA,'source_id':ID_SCHEMA},('notebook_id','source_id')),
+         inputSchema=schema({'notebook_id':ID_SCHEMA,'source_id':ID_SCHEMA,
+            'offset':dict(type='integer',minimum=0,maximum=1048576),
+            'max_chars':dict(type='integer',minimum=1,maximum=16000)},('notebook_id','source_id')),
          annotations=dict(readOnlyHint=True,destructiveHint=False,openWorldHint=False)),
 ]
 

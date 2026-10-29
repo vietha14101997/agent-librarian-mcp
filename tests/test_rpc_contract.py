@@ -31,7 +31,7 @@ class WireContractTests(unittest.TestCase):
                 owner.calls.append((method,path,headers,body))
                 if owner.reply is not None:return owner.reply
                 rpc=parse_qs(path.partition('?')[2]).get('rpcids',[None])[0]
-                payload=json.dumps([['wrb.fr',rpc,'[]']]) if rpc else 'synthetic stream'
+                payload=json.dumps([['wrb.fr',rpc,'[]']]) if rpc else json.dumps([['wrb.fr',None,json.dumps([['Synthetic answer',None,None,None,[None,None,None,[],1]]])]])
                 return HttpReply(200,{'content-type':'application/json'},(")]}'\n"+payload).encode())
             def close(self):pass
         self.sessions=seed_manager(MemoryStore(self.session),self.session)

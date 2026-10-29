@@ -81,7 +81,8 @@ def parse_notebook(raw,expected):
     return book
 
 def parse_source(raw,expected):
-    bounded(raw)
+    from .wire import FRAME_BYTES,SOURCE_CHARS
+    bounded(raw,max_bytes=FRAME_BYTES)
     if not isinstance(raw,list) or len(raw)<4 or not isinstance(raw[0],list) or len(raw[0])<2:
         raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
     meta=raw[0]
@@ -96,7 +97,7 @@ def parse_source(raw,expected):
     for block in raw[3][0]:
         if not isinstance(block,list):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
         collect(block)
-    return {'source_id':expected,'title':text(meta[1]),'content':text('\n\n'.join(parts))}
+    return {'source_id':expected,'title':text(meta[1]),'content':text('\n\n'.join(parts),max_chars=SOURCE_CHARS)}
 
 def cited_text(detail):
     """Known upstream direct/wrapped text segments only; tables remain unverified."""
@@ -116,16 +117,9 @@ def cited_text(detail):
 def parse_query(stream,allowed_sources):
     if not isinstance(stream,str):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
     if len(stream.encode())>MAX_QUERY_STREAM_BYTES:raise Rejected('PROVIDER_RESPONSE_LIMIT')
-    lines=iter((stream[4:] if stream.startswith(")]}'") else stream).split('\n'))
+    from .wire import frames
     best=None
-    for line in lines:
-        line=line.strip()
-        if not line:continue
-        if line.isdigit():
-            if len(line)>8:raise Rejected('PROVIDER_PROTOCOL_ERROR')
-            line=next(lines,'')
-        try:chunk=strict_json(line)
-        except (ValueError,UnicodeError,RecursionError):raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
+    for chunk in frames([stream.encode()]):
         bounded(chunk,max_bytes=MAX_QUERY_STREAM_BYTES)
         if not isinstance(chunk,list):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
         for item in chunk:

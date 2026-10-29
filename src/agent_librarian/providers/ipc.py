@@ -74,7 +74,9 @@ class IPCResearchProvider:
             if name==NAMES[0]:data={'notebooks':[{'id':b['notebook_id'],'title':b['title']} for b in safe['notebooks']]}
             elif name==NAMES[1]:data={'notebook_id':safe['notebook_id'],'title':safe['title'],'sources':[{'id':s['source_id'],'title':s['title']} for s in safe['sources']]}
             elif name==NAMES[2]:data={'notebook_id':safe['notebook_id'],'answer':safe['answer'],'citations':[{k:v for k,v in c.items() if k in ('source_id','citation_number','title','cited_text') and v is not None} for c in safe['citations']]}
-            else:data={'notebook_id':safe['notebook_id'],'source_id':safe['source_id'],'title':safe['title'],'content':safe['content']}
+            else:
+                data={'notebook_id':safe['notebook_id'],'source_id':safe['source_id'],'title':safe['title'],'content':safe['content']}
+                if 'offset' in safe:data['source_page']={k:safe[k] for k in ('offset','total_chars','truncated','next_offset')}
             return {'account_id':self.account_id,'status':'ok','provider_kind':'IPC_RESEARCH_SERVICE' if safe.get('provider')=='GEMINI_HTTPS_UNVERIFIED' else 'IPC_SYNTHETIC_SERVICE','data':data}
         except socket.timeout:raise Rejected('PROVIDER_TIMEOUT_OUTCOME_UNKNOWN') from None
         except (OSError,KeyError,TypeError,ValueError):raise Rejected('IPC_SERVICE_UNAVAILABLE_OR_INVALID') from None
@@ -86,6 +88,7 @@ class IPCResearchProvider:
     def get_notebook(self,notebook_id):return self._call(NAMES[1],{'notebook_id':notebook_id})
     def query(self,notebook_id,query,source_ids):return self._call(NAMES[2],{'notebook_id':notebook_id,'query':query,'source_ids':source_ids})
     def get_source(self,notebook_id,source_id):return self._call(NAMES[3],{'notebook_id':notebook_id,'source_id':source_id})
+    def get_source_page(self,notebook_id,source_id,offset=0,max_chars=16000):return self._call(NAMES[3],{'notebook_id':notebook_id,'source_id':source_id,'offset':offset,'max_chars':max_chars})
     def close(self):
         with self.lock:
             self.closed=True

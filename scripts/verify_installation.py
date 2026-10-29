@@ -161,7 +161,7 @@ def main():
     args = parser.parse_args()
     wheel = Path(args.wheel).resolve()
     (ROOT/'state').mkdir(exist_ok=True)
-    report = {'milestone': 'PORTABLE_ONBOARDING', 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
+    report = {'milestone': 'API_SOURCE_INGESTION_AND_LARGE_NOTEBOOK', 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
               'google_operations': 0, 'live_research_queries': 0, 'credentials': 'SYNTHETIC_METADATA_ONLY',
               'owner_configuration_changed': False}
     with tempfile.TemporaryDirectory(prefix='kn05-', dir=ROOT/'state') as temporary:
@@ -184,6 +184,32 @@ def main():
         result = subprocess.run([interpreter, '-I', '-B', '-m', 'agent_librarian', '--help'],
                                 cwd=projects[0], capture_output=True, text=True, check=True)
         assert 'setup' in result.stdout
+        assert 'sources' in result.stdout
+        source = root/'synthetic-upload.md'
+        source.write_bytes(b'# Synthetic source\nExact local bytes.\n')
+        before = source.read_bytes()
+        preview = subprocess.run([interpreter, '-I', '-B', '-m', 'agent_librarian',
+            'sources', 'add', '--project', str(projects[0]), '--notebook-id', 'notebook-approved',
+            '--path', str(source)], cwd=projects[0], capture_output=True, text=True, check=True)
+        preview = json.loads(preview.stdout)
+        assert preview['status'] == 'PREVIEW' and preview['network_operations'] == 0
+        assert preview['plan']['entries'][0]['sha256'] == hashlib.sha256(before).hexdigest()
+        assert source.read_bytes() == before and not install.state_dir.exists()
+        resource_probe = r'''
+from pathlib import Path
+from agent_librarian.personal import source_admin
+from agent_librarian.providers.gemini import parse_source
+folder=Path(source_admin.__file__).parent
+assert all((folder/name).is_file() for name in ('brave_upload.js','wire.js','brave_rpc.js'))
+content='Synthetic passage. '*2000
+raw=[[['source-test'],'Title'],None,None,[[[0,len(content),content]]]]
+assert parse_source(raw,'source-test')['content']==content
+'''
+        subprocess.run([interpreter, '-I', '-B', '-c', resource_probe], cwd=projects[0],
+                       capture_output=True, text=True, check=True)
+        report['packaged_ingestion_preview_without_authentication'] = True
+        report['packaged_upload_and_wire_javascript_resources'] = True
+        report['packaged_large_source_decoder'] = True
         state = PersonalState(install.state_dir, create=True)
         config = state.load(); config.update(authenticated=True, host='notebook.google.com'); state.save(config)
         write_private(state.path/'notebooks.json', {'account_id': config['account_id'], 'notebooks': [

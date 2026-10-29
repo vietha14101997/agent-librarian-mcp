@@ -239,3 +239,18 @@ closed discovery/create contract. No upstream retry, account switching or auth
 recovery is included. Research MCP and its browser program retain their four-tool
 read/research restriction. Creation is not live-verified; normal onboarding offers
 manual creation and explicit ID linking.
+
+### v0.7 file-ingestion protocol review
+
+`personal/source_admin.py` and `personal/brave_upload.js` adapt the registration
+parameters, resumable-start JSON/headers, finalization headers, source ID layout
+and processing status/type positions in `core/sources.py`, `core/base.py` and
+`core/constants.py` at the same pinned Jacob Ben David revision above (MIT).
+The upstream file notes its resumable-upload implementation was adapted from
+notebooklm-py. This change reconstructs the reviewed wire contract; it imports no
+upstream runtime. Local changes add browser-local credential handling, same-origin
+session validation, bounded staging and durable no-replay import journals; upstream
+mutation retries and auth recovery are not reused. The existing upstream MIT
+notice applies to these adaptations. The incremental framing and journal code
+are local implementations. See `docs/api-ingestion.md` for exact source links and
+the inaccessible second reference; no code was taken from that listing.
