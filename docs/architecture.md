@@ -78,3 +78,10 @@ policy digest, disablement and owner gate records before constructing the backen
 macOS-specific launch/account/browser paths remain under deploy/macos. The ordinary
 Google CLI provider stays blocked. New tests exercise actual MCP/IPC plus synthetic
 HTTP wire parsing; they do not prove separate security identities or live Google.
+
+PERSONAL_LOCAL (0.4.0) constructs the same provider/gateway in process. personal/
+contains user-only state, the Keychain bridge, explicit managed Brave authentication,
+selection and finite query permits. It imports no privileged deployment machinery.
+The runtime is credential-store agnostic; the supported login method uses a private
+Playwright pipe to an owned managed profile. The advanced protected runtime remains
+separate. Current-user trust and host isolation are deliberately distinct profiles.

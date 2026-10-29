@@ -92,11 +92,11 @@ def rpc_result(body,method):
 
 class GeminiHTTPS:
     provider_kind='GEMINI_HTTPS_UNVERIFIED'
-    def __init__(self,sessions,notebooks,timeout=10,sender=None,disabled=lambda:False):
+    def __init__(self,sessions,notebooks,timeout=10,sender=None,disabled=lambda:False,validate_discovery=True):
         if not .05<=timeout<=30:raise Rejected('HTTP_CONFIGURATION_INVALID')
         self.sessions=sessions;self.notebooks=notebooks;self.timeout=timeout
         self.sender=sender if sender is not None else FixedTLS(sessions.host)
-        self.disabled=disabled;self.closed=False;self.reqid=100000
+        self.disabled=disabled;self.closed=False;self.reqid=100000;self.validate_discovery=validate_discovery
     def _check(self):
         if self.closed or self.disabled():raise Rejected('SERVICE_DISABLED')
     def _headers(self,s):
@@ -135,7 +135,7 @@ class GeminiHTTPS:
         try:page=html.decode('utf-8')
         except UnicodeError:raise Rejected('SESSION_REFRESH_STRUCTURE_CHANGED') from None
         new=page_session(page,old,now)
-        parse_discovery(self._rpc(new,LIST_RPC,'/',[None,1,None,[2]]))
+        if self.validate_discovery:parse_discovery(self._rpc(new,LIST_RPC,'/',[None,1,None,[2]]))
         return new
     def account_identity(self):
         self._check();return self.sessions.ensure(self._refresh).account_id

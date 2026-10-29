@@ -35,7 +35,7 @@ def write_json(path,value,root=None):
         if os.path.exists(tmp):os.unlink(tmp)
 
 def parser():
-    p=argparse.ArgumentParser(prog='librarian',description='Local catalogs, dry-run sync planning, and synthetic-provider MCP. No Google authentication or sync execution.')
+    p=argparse.ArgumentParser(prog='librarian',description='Local catalogs, dry-run sync planning, and restricted research MCP. Explicit Personal Local login; no sync execution.')
     sub=p.add_subparsers(dest='command',required=True)
     for name in ('scan','validate'):
         c=sub.add_parser(name);c.add_argument('--root',required=True,help='Explicitly approved local document root')
@@ -48,9 +48,28 @@ def parser():
     c=sub.add_parser('sync-plan');c.add_argument('--catalog',required=True);c.add_argument('--policy',required=True);c.add_argument('--output');c.add_argument('--policy-sha256')
     c=sub.add_parser('migrate');c.add_argument('--input',required=True);c.add_argument('--output',required=True)
     c=sub.add_parser('mcp-serve',help='Official SDK stdio transport, synthetic provider only')
-    c.add_argument('--policy');c.add_argument('--fixture');c.add_argument('--control-dir');c.add_argument('--provider',choices=('fake','service','google'),default='fake')
+    c.add_argument('--policy');c.add_argument('--fixture');c.add_argument('--control-dir');c.add_argument('--provider',choices=('fake','service','personal','google'),default='fake')
     # Service connection parameters are local startup configuration, never MCP arguments.
-    c.add_argument('--service-socket');c.add_argument('--service-uid',type=int);c.add_argument('--client-id',default='research-client')
+    c.add_argument('--state-dir');c.add_argument('--service-socket');c.add_argument('--service-uid',type=int);c.add_argument('--client-id',default='research-client')
+    c=sub.add_parser('setup',help='Read-only persistent runtime/Skill status and installation plan')
+    c.add_argument('setup_action',choices=('status','plan'));c.add_argument('--project',default='.');c.add_argument('--state-dir')
+    c=sub.add_parser('auth',help='Explicit Personal Local Brave login and Keychain session')
+    auth=c.add_subparsers(dest='auth_action',required=True)
+    for action in ('login','status','logout'):
+        a=auth.add_parser(action);a.add_argument('--state-dir');a.add_argument('--show-account',action='store_true')
+        if action=='login':a.add_argument('--method',choices=('existing-brave','managed-brave'));a.add_argument('--brave-profile');a.add_argument('--consent-existing-session',action='store_true');a.add_argument('--consent-discovery',action='store_true');a.add_argument('--timeout',type=int,default=600);a.add_argument('--notify',action=argparse.BooleanOptionalAction,default=True)
+    c=sub.add_parser('notebooks',help='Cached discovered inventory and explicit notebook selection')
+    books=c.add_subparsers(dest='notebook_action',required=True)
+    for action in ('list','select'):
+        a=books.add_parser(action);a.add_argument('--state-dir')
+        if action=='select':a.add_argument('--notebook-id',required=True)
+    c=sub.add_parser('research',help='Four restricted Personal Local operations')
+    research=c.add_subparsers(dest='research_action',required=True)
+    for action in ('approve','query','notebook','source'):
+        a=research.add_parser(action);a.add_argument('--state-dir')
+        if action in ('approve','query'):a.add_argument('--question',required=True)
+        if action=='approve':a.add_argument('--ack-history',action='store_true')
+        if action=='source':a.add_argument('--source-id',required=True)
     for command in ('provider-runtime','provider-status'):
         c=sub.add_parser(command,help='Protected deployment runtime; no caller credential inputs');c.add_argument('--config',required=True)
     c=sub.add_parser('provider-service',help='Restricted Unix service, synthetic credentials and mocked provider only')
@@ -62,6 +81,24 @@ def parser():
 def main(argv=None):
     args=parser().parse_args(argv)
     try:
+        if args.command=='setup':
+            from .personal.setup import inspect,plan
+            from .gateway.common import Rejected
+            try:
+                from .personal.state import DEFAULT_STATE
+                result=inspect(args.project,args.state_dir or DEFAULT_STATE) if args.setup_action=='status' else plan(args.project,args.state_dir or DEFAULT_STATE)
+            except Rejected as e:raise CatalogError(e.code) from None
+            print(json.dumps(result));return 0
+        if args.command in ('auth','notebooks','research'):
+            from .personal.commands import dispatch
+            from .gateway.common import Rejected
+            try:result=dispatch(args)
+            except Rejected as e:
+                error={'status':'ERROR','code':e.code}
+                if type(getattr(e,'os_status',None)) is int:error['keychain_os_status']=e.os_status
+                if hasattr(e,'diagnostics'):error['diagnostics']=e.diagnostics
+                print(json.dumps(error),file=sys.stderr);return 2
+            print(json.dumps(result,ensure_ascii=False,allow_nan=False));return 0 if result.get('status')!='ERROR' else 2
         if args.command in ('provider-runtime','provider-status'):
             from .providers.runtime import run_runtime,runtime_status
             from .gateway.common import Rejected
@@ -86,6 +123,14 @@ def main(argv=None):
             fixture=args.fixture or base/'providers/synthetic.json'
             control=args.control_dir or Path(policy).absolute().parent
             provider=None
+            if args.provider=='personal':
+                if any((args.policy,args.fixture,args.service_socket,args.service_uid is not None,args.control_dir)):raise CatalogError('PERSONAL_STARTUP_CONFIGURATION_INVALID')
+                from .personal.state import PersonalState,DEFAULT_STATE
+                from .personal.runtime import prepare
+                from .gateway.common import Rejected
+                try:
+                    state=PersonalState(args.state_dir or DEFAULT_STATE);policy,provider=prepare(state);control=state.path
+                except Rejected as e:raise CatalogError(e.code) from None
             if args.provider=='service':
                 if not args.service_socket or args.service_uid is None or args.fixture:raise CatalogError('IPC_STARTUP_CONFIGURATION_INVALID')
                 from .gateway.common import load_policy

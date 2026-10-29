@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "agent-librarian-mcp"
-version = "0.3.0"
+version = "0.4.0"
 description = "Local catalogs, curation-aware planning and restricted provider research"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,6 +12,9 @@ license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [{name = "Agent Librarian MCP contributors"}]
 dependencies = ["mcp==2.3.0"]
+
+[project.optional-dependencies]
+personal = ["playwright==1.64.1"]
 
 [project.scripts]
 librarian = "agent_librarian.cli:main"

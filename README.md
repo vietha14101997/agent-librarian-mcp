@@ -1,12 +1,18 @@
 # Agent Librarian MCP
 
+[Personal Local quick start](docs/personal-local.md) is the default developer path.
+Install with `uv sync --locked --extra personal`, run `.venv/bin/librarian auth login
+--consent-discovery`, choose a discovered notebook, then approve one exact question.
+Authentication state stays outside Git, with no plaintext cookie-file fallback.
+
+
 A local Python package for deterministic document catalogs, provenance, change
 detection, disclosure-aware synchronization planning and restricted MCP research.
-Version 0.3.0 adds a fixed-host HTTPS transport, service session lifecycle and a
-prepared macOS deployment profile. The transport is tested only with synthetic
-HTTP and credentials. No Google authentication or live research has been verified.
-Host isolation is **HOST_ISOLATION_PENDING_OWNER_SETUP**. The dedicated protected
-login capture helper remains pending review; no operational live login is shipped.
+Version 0.4.0 introduces PERSONAL_LOCAL: current-user Brave sign-in, Keychain-only
+session persistence, notebook selection and restricted research through the existing
+MCP gateway. It runs without root, launchd, new accounts or a VM. Same-user credential
+isolation is not promised. Host-isolated deployment remains an optional advanced
+profile. Live acceptance is reported separately from implementation and offline tests.
 
 This project is independent development infrastructure. It is not an OSAgent
 product module or a general autonomous document-editing agent. It never uploads,
@@ -108,7 +114,7 @@ not an active registration or proof of Codex-host compatibility.
 Tests use synthetic fixtures and actual CLI/MCP subprocesses. See
 [architecture](docs/architecture.md), [security](SECURITY.md),
 [contributing](CONTRIBUTING.md), and [provenance](THIRD_PARTY_NOTICES.md).
-Version 0.3.0 is a local foundation, not a production security claim. Host
+Version 0.4.0 is a local foundation, not a production security claim. Host
 isolation, live transport/account attestation, trusted approval authority, broader
 platform tests, dependency auditing and public release approval remain open gates.
 
@@ -161,3 +167,34 @@ A [disabled Codex service example](examples/codex.service.disabled.toml) points 
 to the gateway. SDK-client transport is tested; actual Codex-host integration is
 not. No active global configuration changed. No real Google calls, normal Brave
 profile access, Library uploads or sync execution occurred.
+
+## Personal Local and advanced isolation
+
+The previous mandatory host-isolation prerequisite applies only to the advanced
+protected deployment profile. It is not a blocker for Personal Local mode. The
+owner accepts trusted same-user process risks in that mode; the official four-tool
+MCP interface still rejects administrative operations and authentication secrets.
+
+See [Personal Local workflow, login UX and limitations](docs/personal-local.md).
+Ordinary system-browser OAuth callback support has not been established for this
+unofficial consumer transport. The supported managed Brave flow is explicit and
+retains its sign-in; normal Brave is never silently attached or read. auth status
+and native outcome alerts make completion/failure visible before another attempt.
+
+## KN-OSS-04 controlled pilot and reusable Skill
+
+The existing-Brave read-only cookie bridge is an explicitly consented personal
+pilot capability, not the public product's default. It requires the owner-selected
+profile and scoped consent for Google auth rows and the exact Brave Safe Storage
+item. It never copies the database, exports the master key, restarts/attaches normal
+Brave, or falls back to plaintext. The pilot reached verified decryption but Google
+redirected its fixed-host session validation to sign-in. No discovery/query
+succeeded and no session was saved. Live attempts stopped under the owner's rule.
+
+The future public Connect architecture should evaluate a browser extension and
+native messaging. The minimal `.agents/skills/agent-librarian/SKILL.md` skeleton and
+`librarian setup status`/`setup plan` detect persistent runtime/project state without
+conversation memory. Full idempotent installation, per-project mapping, repair,
+update/uninstall and client adapters remain in the
+[installation contract](docs/skill-installation.md). No other project or active MCP
+configuration was installed or modified.

@@ -1,0 +1,7 @@
+# Review first. Never register the unrestricted upstream Notebook MCP server.
+[mcp_servers.agent_librarian_personal]
+command = "/ABS/agent-librarian-mcp/.venv/bin/python"
+args = ["-I", "-B", "-m", "agent_librarian", "mcp-serve", "--provider", "personal"]
+enabled = false
+enabled_tools = ["librarian_list_notebooks", "librarian_get_notebook", "librarian_query", "librarian_get_source"]
+# Default runtime is outside the repository. No credential/profile parameters in MCP.

@@ -1,5 +1,16 @@
 # Security
 
+PERSONAL_LOCAL is the default current-user profile in 0.4.0. Its guarantees cover
+the restricted official research interface, explicit login/selection/query consent,
+Keychain-only session storage, user-only state, output projection/redaction and no
+administrative MCP operations. It does not establish OS credential isolation from
+same-user shells. The owner accepts this residual risk; a primary account expands
+the exposure. The normal Brave profile remains outside the supported managed flow.
+
+The remainder describes the optional advanced isolated deployment and shared
+controls. HOST_ISOLATION_PENDING_OWNER_SETUP does not block Personal Local mode.
+
+
 Version 0.3.0 is a local prototype with synthetic providers and restricted Unix IPC. Authenticated
 integration is **BLOCKED_PENDING_ISOLATED_RUNTIME**. There is no Google login,
 cookie import, browser extraction, TCP listener or synchronization executor.
@@ -62,3 +73,11 @@ The HTTPS sender verifies TLS and rejects redirects, unexpected types/compressio
 oversize data and unreviewed operations. It never retries a query. Query timeouts,
 disconnects and parse failures can have unknown history effects. Local gate flags
 summarize owner evidence; they do not independently prove that evidence exists.
+
+Scoped normal-Brave cookie reuse is never a silent default. The personal pilot
+requires explicit profile/row/Keychain consent and validates v10/schema24/domain
+binding. The browser-wide key remains in a short-lived native helper; no DB copy,
+key export, browser write/restart/debugger or plaintext fallback is implemented.
+The live account check redirected to sign-in; the operation stopped without
+broader access, discovery or query. The preferred public architecture to evaluate
+is extension/native messaging, not browser-wide key extraction.

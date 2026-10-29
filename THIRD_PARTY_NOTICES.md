@@ -148,3 +148,69 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## KN-OSS-04 Personal Local authentication
+
+personal/browser_auth.py adapts the managed-profile polling, allowed Notebook host,
+secure-cookie selection and known account/CSRF/session/build-field behavior from
+upstream utils/cdp.py and core/auth.py at the same pinned revision
+8ac9728ec5b128b05077e9d7c4c8bb11b5830c61. Copyright (c) 2025 Jacob Ben David, MIT;
+the full upstream notice above remains applicable. It excludes upstream profile
+search, existing-browser attachment, public CDP ports, cookie databases, plaintext
+stores, browser recovery and unrestricted CLI/MCP runtime.
+
+Browser lifecycle/pipe transport uses optional Playwright Python 1.64.1 (Microsoft,
+Apache-2.0), with pyee and greenlet locked in uv.lock. It is a dependency, not copied
+source. The installed distribution retains its licenses and bundled component
+notices. No bundled browser download or Playwright MCP endpoint is launched.
+Dedicated-profile application policy, lifecycle receipts and the Personal Local
+Keychain helper are project code. No custom browser automation protocol or custom
+cryptography was introduced. Custom Brave compatibility still requires local tests.
+
+## Scoped Brave pilot cookie-format support
+
+personal/brave_cookie_bridge.swift uses Apple's Security/CommonCrypto/CryptoKit APIs
+for Chromium's documented v10 PBKDF2-HMAC-SHA1/AES-128-CBC format and schema-24 host
+binding. Reference: components/os_crypt/os_crypt_mac.mm at ec82d4ab8 (blob
+66f77c296754393677dac5350cf3b1b2e35d37ac), copyright 2014 The Chromium Authors;
+net/extras/sqlite/sqlite_persistent_cookie_store.cc (reviewed blob
+bb61afb851aaf7ef28aa5e705d329bb31bc2e164), copyright 2012 The Chromium Authors.
+Local adaptations restrict exact approved names/hosts, reject unknown encryption,
+check the domain hash, keep the key in a short-lived helper and omit plaintext
+fallback, DB copies/profile writes, key persistence and unrestricted browser access.
+
+The browser_cookie3 Brave mapping was consulted for the exact Brave Safe Storage /
+Brave Keychain item. Its general browser reader was not copied or installed; its
+whole-database copy fallback was excluded. This is a personal pilot, not the future
+public default. No new cryptographic construction or unrestricted upstream runtime
+was introduced.
+
+### Chromium BSD notice
+
+// Copyright 2015 The Chromium Authors
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//    * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//    * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//    * Neither the name of Google LLC nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
