@@ -1,4 +1,4 @@
-"""Synthetic provider service. No live transport, real credentials or host isolation claim."""
+"""Restricted provider service. Protected live construction is only through runtime.py."""
 import hashlib
 import json
 import os
@@ -33,7 +33,11 @@ class SecretConfinement:
     def scrub(self,value):
         bounded(value)
         def walk(x):
-            if isinstance(x,str):return x.replace(self.secret,'[REDACTED]')
+            if isinstance(x,str):
+                secrets=self.secret() if callable(self.secret) else (self.secret,)
+                for secret in secrets:
+                    if secret:x=x.replace(secret,'[REDACTED]')
+                return x
             if isinstance(x,list):return [walk(v) for v in x]
             if isinstance(x,dict):return {walk(k):walk(v) for k,v in x.items()}
             return x
@@ -45,24 +49,27 @@ class SecretConfinement:
     def close(self):self.provider.close()
 
 class ProviderService:
-    def __init__(self,path,policy,fixture,canary_store,allowed_uid,client_id,adapter='gemini-mock'):
+    def __init__(self,path,policy,fixture,canary_store,allowed_uid,client_id,adapter='gemini-mock',*,provider=None):
         if type(allowed_uid) is not int or allowed_uid<0 or not re.fullmatch('[A-Za-z0-9_-]{1,64}',client_id):raise Rejected('SERVICE_PRINCIPAL_INVALID')
         self.path=socket_path(path);self.policy_path=Path(policy)
         _,self.policy_digest=owned_json(policy)
-        config=load_policy(policy);store,_=owned_json(canary_store,private=True)
-        if not isinstance(store,dict) or set(store)!={'synthetic_only','account_id','secret'} or store['synthetic_only'] is not True:
-            raise Rejected('SYNTHETIC_STORE_REQUIRED')
-        secret=store['secret']
-        if not isinstance(secret,str) or not secret.startswith('SYNTHETIC_') or not 16<=len(secret)<=128:
-            raise Rejected('SYNTHETIC_STORE_REQUIRED')
-        if store['account_id']!=config['account_id']:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')
-        fixture_data,_=owned_json(fixture)
-        if adapter=='gemini-mock':
-            backend=GeminiResearchProvider(MockGeminiTransport(fixture_data,store['account_id'],secret,config['timeout_seconds']),
-                AccountCapability(store['account_id']),config['notebooks'],config['query_max_chars'])
-        elif adapter=='fake':backend=FakeProvider(fixture,config['timeout_seconds'],config['account_id'])
-        else:raise Rejected('BLOCKED_PENDING_ISOLATED_RUNTIME')
-        self.gateway=Gateway(policy,fixture,self.path.parent,provider=SecretConfinement(backend,secret))
+        config=load_policy(policy)
+        if provider is None:
+            store,_=owned_json(canary_store,private=True)
+            if not isinstance(store,dict) or set(store)!={'synthetic_only','account_id','secret'} or store['synthetic_only'] is not True:
+                raise Rejected('SYNTHETIC_STORE_REQUIRED')
+            secret=store['secret']
+            if not isinstance(secret,str) or not secret.startswith('SYNTHETIC_') or not 16<=len(secret)<=128:
+                raise Rejected('SYNTHETIC_STORE_REQUIRED')
+            if store['account_id']!=config['account_id']:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')
+            fixture_data,_=owned_json(fixture)
+            if adapter=='gemini-mock':
+                backend=GeminiResearchProvider(MockGeminiTransport(fixture_data,store['account_id'],secret,config['timeout_seconds']),
+                    AccountCapability(store['account_id']),config['notebooks'],config['query_max_chars'])
+            elif adapter=='fake':backend=FakeProvider(fixture,config['timeout_seconds'],config['account_id'])
+            else:raise Rejected('BLOCKED_PENDING_ISOLATED_RUNTIME')
+            provider=SecretConfinement(backend,secret)
+        self.gateway=Gateway(policy,fixture,self.path.parent,provider=provider)
         self.allowed_uid=allowed_uid;self.client_id=client_id;self.timeout=min(5,config['timeout_seconds']+1)
         self.listener=None;self.connection=None;self.stopped=False;self.bound_identity=None
 

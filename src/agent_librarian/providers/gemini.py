@@ -30,7 +30,7 @@ class ReadRequest:
 class AuthenticatedReadTransport(Protocol):
     """Implementations own authentication. Return decoded RPC data or stream text.
 
-    No live HTTP/session implementation is provided by this package.
+    Protected-runtime HTTPS is implemented separately; mock transport is the default.
     """
     def account_identity(self) -> str: ...
     def request(self,request:ReadRequest): ...
@@ -168,8 +168,8 @@ class GeminiResearchProvider:
         if nb not in self.notebooks:raise Rejected('NOTEBOOK_NOT_ALLOWED')
 
     def _result(self,data):
-        return {'account_id':self.capability.account_id,'status':'ok','provider_kind':'GEMINI_SOURCE_DERIVED_MOCK',
-            'data':data,'verification_status':'SOURCE_NOT_VERIFIED','limitations':['Source-derived mock transport only; live Google compatibility unverified.']}
+        return {'account_id':self.capability.account_id,'status':'ok','provider_kind':getattr(self.transport,'provider_kind','GEMINI_SOURCE_DERIVED_MOCK'),
+            'data':data,'verification_status':'SOURCE_NOT_VERIFIED','limitations':['Source-derived adapter; live Google compatibility and semantic citation support unverified.']}
 
     def list_notebooks(self):
         self._identity();books=parse_discovery(self.transport.request(ReadRequest('rpc',LIST_RPC,'/',[None,1,None,[2]])))
@@ -187,7 +187,12 @@ class GeminiResearchProvider:
         if not isinstance(source_ids,list) or not source_ids or len(source_ids)>100 or any(ident(s) not in self.notebooks[notebook_id]['sources'] for s in source_ids):raise Rejected('SOURCE_NOT_ALLOWED')
         self._identity()
         params=[[[[sid]] for sid in source_ids],query,None,[2,None,[1]],str(uuid.uuid4())]
-        result=parse_query(self.transport.request(ReadRequest('stream',QUERY_ENDPOINT,f'/notebook/{notebook_id}',params)),source_ids)
+        try:result=parse_query(self.transport.request(ReadRequest('stream',QUERY_ENDPOINT,f'/notebook/{notebook_id}',params)),source_ids)
+        except Rejected as e:
+            if getattr(self.transport,'provider_kind','')=='GEMINI_HTTPS_UNVERIFIED':
+                e.outcome='UNKNOWN'
+                if e.code=='AUTHENTICATION_EXPIRED':self.transport.invalidate_auth()
+            raise
         return self._result({'notebook_id':notebook_id,**result})
 
     def get_source(self,notebook_id,source_id):

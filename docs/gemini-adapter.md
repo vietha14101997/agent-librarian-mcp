@@ -1,10 +1,10 @@
 # Gemini adapter boundary
 
-Version 0.2.0 implements four source-derived parsing operations against an injected
-AuthenticatedReadTransport and AccountCapability. Only MockGeminiTransport is
-supplied. No live HTTP transport, login, session refresh or credential discovery
-exists. `mcp-serve --provider google` refuses startup. The service supports only
-fake and gemini-mock. Mock success does not prove Google compatibility.
+Version 0.3.0 implements four source-derived parsing operations against an injected
+AuthenticatedReadTransport and AccountCapability. MockGeminiTransport remains the default. A restricted GeminiHTTPS implementation
+and session manager are now supplied behind protected-runtime gates; they have
+only synthetic HTTP verification. Protected initial login capture is pending review. `mcp-serve --provider google` refuses startup. The ordinary synthetic service command supports only
+fake and gemini-mock; protected provider-runtime construction can select HTTPS. Mock success does not prove Google compatibility.
 
 | Method | Reviewed protocol detail |
 |---|---|
@@ -36,5 +36,6 @@ No administrative operations, source registration/deletion/Drive sync, notebook
 sharing/deletion, account switching, generic APIs or shell execution are exposed.
 The adapter reads no environment, browser state, cookie database, Keychain or
 upstream profile. See THIRD_PARTY_NOTICES.md for exact pinned source attribution
-and modifications. Complete wire envelopes, live transport/account attestation,
-authentication lifecycle and real compatibility remain future acceptance gates.
+and modifications. Wire envelopes and lifecycle are now implemented and mock-tested. Actual host
+isolation, Keychain access, protected login capture, live account identity and
+Google compatibility remain acceptance gates. See transport-security.md and session-auth.md.

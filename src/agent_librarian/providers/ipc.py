@@ -67,12 +67,15 @@ class IPCResearchProvider:
             if response['account_id']!=self.account_id:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')
             safe=response['result']
             if not isinstance(safe,dict):raise Rejected('IPC_RESPONSE_INVALID')
-            if safe.get('status')!='OK':raise Rejected(safe.get('code') if safe.get('code') in SAFE_ERRORS else 'PROVIDER_FAILURE')
+            if safe.get('status')!='OK':
+                failure=Rejected(safe.get('code') if safe.get('code') in SAFE_ERRORS else 'PROVIDER_FAILURE')
+                if safe.get('outcome')=='UNKNOWN':failure.outcome='UNKNOWN'
+                raise failure
             if name==NAMES[0]:data={'notebooks':[{'id':b['notebook_id'],'title':b['title']} for b in safe['notebooks']]}
             elif name==NAMES[1]:data={'notebook_id':safe['notebook_id'],'title':safe['title'],'sources':[{'id':s['source_id'],'title':s['title']} for s in safe['sources']]}
             elif name==NAMES[2]:data={'notebook_id':safe['notebook_id'],'answer':safe['answer'],'citations':[{k:v for k,v in c.items() if k in ('source_id','citation_number','title','cited_text') and v is not None} for c in safe['citations']]}
             else:data={'notebook_id':safe['notebook_id'],'source_id':safe['source_id'],'title':safe['title'],'content':safe['content']}
-            return {'account_id':self.account_id,'status':'ok','provider_kind':'IPC_SYNTHETIC_SERVICE','data':data}
+            return {'account_id':self.account_id,'status':'ok','provider_kind':'IPC_RESEARCH_SERVICE' if safe.get('provider')=='GEMINI_HTTPS_UNVERIFIED' else 'IPC_SYNTHETIC_SERVICE','data':data}
         except socket.timeout:raise Rejected('PROVIDER_TIMEOUT_OUTCOME_UNKNOWN') from None
         except (OSError,KeyError,TypeError,ValueError):raise Rejected('IPC_SERVICE_UNAVAILABLE_OR_INVALID') from None
         finally:
@@ -95,3 +98,8 @@ SAFE_ERRORS={'FORBIDDEN_OPERATION','NOTEBOOK_NOT_ALLOWED','SOURCE_NOT_ALLOWED','
     'PROVIDER_TIMEOUT_OUTCOME_UNKNOWN','PROVIDER_PROTOCOL_ERROR','PROVIDER_STRUCTURE_INVALID','UNIMPLEMENTED_SOURCE_GAP',
     'PROVIDER_NOTEBOOK_MISMATCH','PROVIDER_SOURCE_MISMATCH','PROVIDER_CITATION_NOT_ALLOWED','PROVIDER_CONTENT_REJECTED',
     'CALLER_PRINCIPAL_REJECTED','IPC_FRAME_INVALID','IPC_REQUEST_INVALID','IPC_CLIENT_ID_REJECTED','SERVICE_POLICY_CHANGED'}
+
+SAFE_ERRORS.update({'QUERY_OUTCOME_UNKNOWN','PROVIDER_TIMEOUT','HTTP_TRANSPORT_FAILURE','HTTP_STATUS_REJECTED',
+    'HTTP_REDIRECT_REJECTED','HTTP_RESPONSE_INVALID','HTTP_RESPONSE_LIMIT','HTTP_CONTENT_TYPE_REJECTED',
+    'HTTP_ENCODING_REJECTED','SESSION_REFRESH_STRUCTURE_CHANGED','CREDENTIAL_STORE_UNAVAILABLE',
+    'CREDENTIAL_STORE_INVALID','SESSION_INVALID','PROVIDER_RPC_MISMATCH'})

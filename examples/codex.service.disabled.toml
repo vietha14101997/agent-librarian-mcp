@@ -1,0 +1,8 @@
+# Disabled gateway-only example; no active Codex configuration is changed.
+# Replace numeric service UID and paths only after owner-approved deployment.
+[mcp_servers.agent_librarian_research]
+command = "/Library/AgentLibrarian/releases/0.3.0/runtime/bin/python3"
+args = ["-I", "-B", "-m", "agent_librarian", "mcp-serve", "--provider", "service", "--policy", "/ABS/agent-front-policy.json", "--service-socket", "/private/var/run/agent-librarian/research.sock", "--service-uid", "0", "--client-id", "research-client", "--control-dir", "/ABS/agent-control"]
+enabled = false
+enabled_tools = ["librarian_list_notebooks", "librarian_get_notebook", "librarian_query", "librarian_get_source"]
+# UID 0 is deliberately unusable for the nonroot service. Never pass credentials.

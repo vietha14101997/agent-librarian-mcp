@@ -2,11 +2,11 @@
 
 A local Python package for deterministic document catalogs, provenance, change
 detection, disclosure-aware synchronization planning and restricted MCP research.
-Version 0.2.0 adds independent research curation, safe catalog v2 migration,
-restricted Unix provider IPC and a source-derived Gemini adapter tested with a
-mock transport. Authentication remains **BLOCKED_PENDING_ISOLATED_RUNTIME**;
-host isolation is **HOST_ISOLATION_PENDING_OWNER_SETUP**. No live Google support
-is available.
+Version 0.3.0 adds a fixed-host HTTPS transport, service session lifecycle and a
+prepared macOS deployment profile. The transport is tested only with synthetic
+HTTP and credentials. No Google authentication or live research has been verified.
+Host isolation is **HOST_ISOLATION_PENDING_OWNER_SETUP**. The dedicated protected
+login capture helper remains pending review; no operational live login is shipped.
 
 This project is independent development infrastructure. It is not an OSAgent
 product module or a general autonomous document-editing agent. It never uploads,
@@ -108,7 +108,7 @@ not an active registration or proof of Codex-host compatibility.
 Tests use synthetic fixtures and actual CLI/MCP subprocesses. See
 [architecture](docs/architecture.md), [security](SECURITY.md),
 [contributing](CONTRIBUTING.md), and [provenance](THIRD_PARTY_NOTICES.md).
-Version 0.2.0 is a local foundation, not a production security claim. Host
+Version 0.3.0 is a local foundation, not a production security claim. Host
 isolation, live transport/account attestation, trusted approval authority, broader
 platform tests, dependency auditing and public release approval remain open gates.
 
@@ -137,3 +137,27 @@ Read [knowledge policy and migration](docs/knowledge-policy.md),
 [owner host prerequisites and revocation](docs/host-setup.md), and
 [Codex/Claude Code/Gemini CLI setup scope](docs/agent-setup.md). Only the SDK client
 is tested; no universal agent compatibility is claimed.
+
+## Prepared macOS runtime and restricted HTTPS
+
+[Deployment profile](deploy/macos/README.md) contains inspectable owner-run plans,
+launchd template, immutable bundle validation, synthetic canary setup, disable/
+restart/rollback and a host probe. No privileged scripts have been executed.
+The current admin/developer agent identity and agent-owned Brave app are not an
+accepted isolation environment. Use a non-admin agent principal or isolated VM
+and separately protected nonroot service principal, after owner approval.
+
+The [HTTPS transport](docs/transport-security.md) validates four source-derived
+request envelopes, fixed Google hosts/TLS, response size/type/correlation, session
+state and account binding. [Session lifecycle](docs/session-auth.md) has no plaintext
+credential fallback or silent browser recovery. Keychain bridge source is prepared;
+actual helper/daemon Keychain access, protected login capture and host isolation
+remain unverified. The ordinary google provider CLI option still refuses startup.
+Only protected provider-runtime construction can select the HTTPS backend, with
+all live gates disabled by default. Do not set gate flags as a substitute for
+independent owner acceptance and explicit account/notebook/query approval.
+
+A [disabled Codex service example](examples/codex.service.disabled.toml) points only
+to the gateway. SDK-client transport is tested; actual Codex-host integration is
+not. No active global configuration changed. No real Google calls, normal Brave
+profile access, Library uploads or sync execution occurred.

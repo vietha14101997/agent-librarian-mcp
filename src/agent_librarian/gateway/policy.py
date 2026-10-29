@@ -59,9 +59,9 @@ class Gateway:
         data=raw.get('data')
         if not isinstance(data,dict):raise Rejected('PROVIDER_STRUCTURE_INVALID')
         kind=raw.get('provider_kind','SYNTHETIC_OFFLINE')
-        if kind not in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE'}:raise Rejected('PROVIDER_STRUCTURE_INVALID')
+        if kind not in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE','IPC_RESEARCH_SERVICE','GEMINI_HTTPS_UNVERIFIED'}:raise Rejected('PROVIDER_STRUCTURE_INVALID')
         base=dict(status='OK',provider_status='ok',provider=kind,
-            untrusted_research_data=True,verification_limitations=['No Google operation performed.'])
+            untrusted_research_data=True,verification_limitations=['No Google operation performed.'] if kind in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE'} else ['Live transport result; provenance and semantic support not independently attested.'])
         if name==NAMES[0]:
             notebooks=data.get('notebooks')
             if not isinstance(notebooks,list) or len(notebooks)>1000:
@@ -136,7 +136,7 @@ class Gateway:
         except Rejected as e:
             code=e.code
             return dict(status='ERROR',code=code,provider_status='NOT_ACCEPTED',
-                outcome='UNKNOWN' if code=='PROVIDER_TIMEOUT_OUTCOME_UNKNOWN' else 'NOT_VERIFIED')
+                outcome=getattr(e,'outcome','UNKNOWN' if code in {'PROVIDER_TIMEOUT_OUTCOME_UNKNOWN','QUERY_OUTCOME_UNKNOWN'} else 'NOT_VERIFIED'))
         except Exception:
             return dict(status='ERROR',code='INTERNAL_ERROR',provider_status='NOT_ACCEPTED')
         finally:

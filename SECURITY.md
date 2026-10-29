@@ -1,6 +1,6 @@
 # Security
 
-Version 0.2.0 is a local prototype with synthetic providers and restricted Unix IPC. Authenticated
+Version 0.3.0 is a local prototype with synthetic providers and restricted Unix IPC. Authenticated
 integration is **BLOCKED_PENDING_ISOLATED_RUNTIME**. There is no Google login,
 cookie import, browser extraction, TCP listener or synchronization executor.
 The local Unix listener checks kernel peer identity, fixed schemas and independent
@@ -45,8 +45,20 @@ agreed private channel. No hosted reporting channel exists yet; choosing one is
 a release gate. Never include real cookies, tokens, browser profiles or private
 documents in an issue, test fixture, log or archive.
 
-The source-derived Gemini adapter uses injected mock transport/auth capabilities;
+The source-derived Gemini adapter uses injected transport/auth capabilities;
 it never discovers credentials. A synthetic-only store and exact known-canary
-redaction test the boundary. No live credential store implementation is supplied.
+redaction test the boundary. A restricted HTTPS/session backend and Keychain helper bridge are supplied as
+prepared code. Automatic tests use synthetic stores only; Keychain integration
+and protected interactive capture are unverified and live activation is gated.
 The same-UID negative test confirms the host isolation blocker remains. See
 [owner prerequisites](docs/host-setup.md) and [IPC limitations](docs/ipc.md).
+
+The current agent identity has admin/developer membership and the normal Brave
+bundle is agent-owned. A distinct service UID alone does not satisfy isolation.
+Effective elevation, ACLs, immutable code/launch policy, process memory and endpoint
+ownership require owner verification. The default deployment is disabled/synthetic;
+no privileged setup or login has been performed. See deploy/macos/README.md.
+The HTTPS sender verifies TLS and rejects redirects, unexpected types/compression,
+oversize data and unreviewed operations. It never retries a query. Query timeouts,
+disconnects and parse failures can have unknown history effects. Local gate flags
+summarize owner evidence; they do not independently prove that evidence exists.

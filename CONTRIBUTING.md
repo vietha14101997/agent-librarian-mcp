@@ -36,3 +36,9 @@ Build wheels only from a clean source snapshot; flit includes package data. Insp
 wheel members for Apple metadata, private data and symlinks. LICENSE and
 THIRD_PARTY_NOTICES.md must both be present under dist-info/licenses. This version
 uses the SPDX MIT license expression and explicit license-files for attribution.
+
+The restricted HTTPS path must use injected synthetic HTTP in automatic tests.
+Never invoke the Keychain helper, browser login or authenticated Google from tests.
+macOS deployment scripts print plans by default; no --apply is permitted during
+routine test runs. Local filesystem rollback tests mock launchctl/root identity
+and are not privileged deployment evidence. Keep separate-UID skips explicit.

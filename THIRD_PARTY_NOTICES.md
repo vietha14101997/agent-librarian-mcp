@@ -68,6 +68,31 @@ Those paths are excluded. Safe projection, no raw response logging, no TCP and n
 downloads address analogous surfaces, not production certification. Live account
 attestation and complete wire compatibility remain unverified.
 
+### KN-OSS-03 wire/session adaptation
+
+providers/https_transport.py additionally adapts core/base.py _build_request_body,
+_build_url, _parse_response, _extract_rpc_result and core/conversation.py query
+form envelopes at the same pinned commit. providers/session.py adapts token and
+negative session-ID fields from core/auth.py and core/base.py and only the internal
+oPEP7c account field from utils/cdp.py. utils/config.py establishes the two consumer
+host names. Copyright remains (c) 2025 Jacob Ben David, MIT.
+
+Modifications: fixed allowlisted hosts/operations; standard verified TLS; strict
+size/type/encoding/correlation checks; no redirect, retry, arbitrary endpoint,
+raw-response dump, environment override, cookie rotation or browser recovery.
+Account extraction rejects absent/ambiguous internal fields instead of generic
+email guessing. No upstream auth store, browser/CDP helper or unrestricted runtime
+is imported. The original MIT notice below covers these adaptations and is shipped
+in wheel metadata. No independent third-party browser code was copied.
+
+On 2026-10-29 selected core/base.py, core/auth.py, core/conversation.py,
+utils/cdp.py and utils/config.py current public bytes matched the pinned copies.
+The current changelog and four published advisories were reviewed. Negative SID,
+signed-out HTTP 200 and stale credential mirror corrections informed safe behavior;
+no mirrors/fallback stores are implemented here. No repository-wide audit or live
+compatibility is implied. Keychain Swift source uses Apple's standard Security API;
+it is project-written, not copied from upstream. Credential capture is not supplied.
+
 ### Upstream MIT notice
 
 MIT License

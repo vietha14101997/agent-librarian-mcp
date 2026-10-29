@@ -51,6 +51,8 @@ def parser():
     c.add_argument('--policy');c.add_argument('--fixture');c.add_argument('--control-dir');c.add_argument('--provider',choices=('fake','service','google'),default='fake')
     # Service connection parameters are local startup configuration, never MCP arguments.
     c.add_argument('--service-socket');c.add_argument('--service-uid',type=int);c.add_argument('--client-id',default='research-client')
+    for command in ('provider-runtime','provider-status'):
+        c=sub.add_parser(command,help='Protected deployment runtime; no caller credential inputs');c.add_argument('--config',required=True)
     c=sub.add_parser('provider-service',help='Restricted Unix service, synthetic credentials and mocked provider only')
     c.add_argument('--socket',required=True);c.add_argument('--service-policy',required=True);c.add_argument('--fixture',required=True)
     c.add_argument('--canary-store',required=True);c.add_argument('--allowed-uid',required=True,type=int);c.add_argument('--client-id',default='research-client')
@@ -60,6 +62,14 @@ def parser():
 def main(argv=None):
     args=parser().parse_args(argv)
     try:
+        if args.command in ('provider-runtime','provider-status'):
+            from .providers.runtime import run_runtime,runtime_status
+            from .gateway.common import Rejected
+            try:
+                if args.command=='provider-runtime':run_runtime(args.config)
+                else:print(json.dumps(runtime_status(args.config)))
+            except Rejected as e:raise CatalogError(e.code) from None
+            return 0
         if args.command=='provider-service':
             from .providers.service import run_service
             from .gateway.common import Rejected

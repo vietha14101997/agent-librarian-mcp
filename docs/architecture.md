@@ -68,3 +68,13 @@ Catalog and research policy remain independent. Plans carry a policy fingerprint
 for change detection and trusted_authorization=false. Future publication requires
 an owner authority outside agent write access; no execution capability exists.
 See knowledge-policy.md, ipc.md, gemini-adapter.md and host-setup.md for contracts.
+
+Version 0.3.0 extends this foundation with providers/https_transport.py and
+session.py. FixedTLS enforces a closed host/TLS/request boundary; SessionManager
+validates page identity/tokens plus discovery before persisting refreshed state.
+credential_store.py bridges to a service-private OS helper without plaintext
+fallback. runtime.py checks protected ownership, exact release integrity, principal,
+policy digest, disablement and owner gate records before constructing the backend.
+macOS-specific launch/account/browser paths remain under deploy/macos. The ordinary
+Google CLI provider stays blocked. New tests exercise actual MCP/IPC plus synthetic
+HTTP wire parsing; they do not prove separate security identities or live Google.
