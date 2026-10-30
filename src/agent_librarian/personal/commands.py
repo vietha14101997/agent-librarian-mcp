@@ -8,6 +8,9 @@ from .runtime import status,logout,direct_call
 from ..gateway.common import NAMES,Rejected
 
 def dispatch(args):
+    if args.command=='browser' and args.browser_action=='install':
+        from .managed_browser import install_browser
+        return install_browser(args.approve_download)
     path=args.state_dir or DEFAULT_STATE
     login_action=args.command=='auth' and args.auth_action=='login'
     existing=None
@@ -15,11 +18,33 @@ def dispatch(args):
     cached=existing is not None and existing.load()['authenticated']
     if login_action and not cached:
         method=getattr(args,'method',None)
-        if method is None:raise Rejected('AUTHENTICATION_METHOD_SELECTION_REQUIRED')
+        if method is None:method='managed-chromium'
         if method=='existing-brave' and not getattr(args,'consent_existing_session',False):raise Rejected('EXISTING_BRAVE_ACCESS_APPROVAL_REQUIRED')
         if method=='existing-brave' and not getattr(args,'brave_profile',None):raise Rejected('BRAVE_PROFILE_SELECTION_REQUIRED')
         if not args.consent_discovery:raise Rejected('LOGIN_AND_DISCOVERY_CONSENT_REQUIRED')
     state=existing or PersonalState(path,create=login_action)
+    from . import managed_auth
+    managed=managed_auth.selected(state)
+    method=getattr(args,'method',None)
+    if managed and method not in (None,'managed-chromium'):
+        raise Rejected('TRANSPORT_SELECTION_CONFLICT_USE_SEPARATE_STATE')
+    if args.command=='auth' and (managed or method=='managed-chromium' or
+            (login_action and not cached and method is None)):
+        if args.auth_action=='login':
+            try:return managed_auth.login(state,args.consent_discovery,args.timeout)
+            except KeyboardInterrupt:return {'status':'STOPPED_BY_OWNER','browser_profile_retained':True}
+        if args.auth_action=='status':return managed_auth.status(state,args.show_account)
+        if args.auth_action in ('check','refresh'):return managed_auth.check(state,refresh=args.auth_action=='refresh')
+        return managed_auth.logout(state)
+    if args.command=='auth' and args.auth_action in ('check','refresh'):
+        raise Rejected('MANAGED_AUTHENTICATION_REQUIRED')
+    if args.command=='browser' and (managed or args.browser_action in ('start','close')):
+        from .managed_browser import ManagedBrowser
+        if args.browser_action=='status':return managed_auth.status(state)
+        if args.browser_action=='connect':raise Rejected('USE_AUTH_LOGIN_FOR_MANAGED_CHROMIUM')
+        with ManagedBrowser(state,headless=False,keep_open=args.browser_action=='start',start_if_missing=args.browser_action!='close') as browser:
+            if args.browser_action=='close':browser.close_browser()
+        return {'status':'BROWSER_STARTED' if args.browser_action=='start' else 'BROWSER_CLOSED','transport':'MANAGED_CDP','profile_retained':True}
     if args.command=='browser':
         from .brave_transport import connect,browser_status
         return connect(state,args.consent_discovery,active_tab=args.active_tab) if args.browser_action=='connect' else browser_status(state)

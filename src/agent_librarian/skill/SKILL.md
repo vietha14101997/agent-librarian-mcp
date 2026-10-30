@@ -98,14 +98,20 @@ Never clear journals, change filenames or re-plan to bypass an uncertain upload.
 A source may be registered even after a lost response. No query permit follows
 from ingestion. Do not recreate notebooks or reupload existing pilot sources.
 
-`auth status` / `browser status` inspect cached state. `setup doctor` is an optional
-offline diagnostic for receipt installations. Offline health does not prove a live
-tab/session. The current live transport is a macOS Brave pilot requiring an existing
-dedicated Keychain account binding; a new machine is not automatically connected.
-Missing authentication requires explicit owner setup following the repository's
-Personal Local guide. A closed/navigated tab requires restoring the pinned Notebook
-homepage; consented `browser connect --consent-discovery` refreshes inventory, and
-`--active-tab` separately approves replacing the pinned tab. Do not silently log in,
-switch accounts, extract cookies, attach a debugger or recreate profiles. Keep
-credentials outside projects, Skill files and tool inputs. Repair only owned
-non-secret configuration within the user's authorized scope; preserve auth state.
+`auth status` / `browser status` inspect cached state; they do not establish live
+authentication. For a new connection, install the optional personal dependencies,
+review `browser install`, and obtain owner approval before executable downloads
+with `browser install --approve-download`. Initial `auth login --consent-discovery`
+opens a dedicated Chromium profile. Ask the owner to complete Google login there;
+verify a real discovery RPC before calling it connected. Never bypass a Google
+challenge or use a personal browser profile. The profile persists outside projects
+and can be closed between Agent sessions. `auth check` / `auth refresh` use bounded
+read-only discovery to distinguish offline, expired, unavailable and rejected
+sessions. Reauthentication uses the same profile, without resetting it. Read the
+repository's `docs/managed-chromium.md` for the lifecycle and exact transport limits.
+
+Reuse existing Brave compatibility installations until replacement acceptance and
+owner-approved activation. There is no automatic transport fallback after failure.
+Use a separate test state for a managed-browser migration. Keep credentials and
+browser profiles outside projects, Skill files, logs and review archives. Preserve
+existing authentication, project maps and unrelated host settings during repair.

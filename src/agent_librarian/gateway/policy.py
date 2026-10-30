@@ -4,6 +4,14 @@ from pathlib import Path
 from .common import MAX_RESPONSE, NAMES, Rejected, load_policy, exact, ident, text, URL_PATH
 from ..providers.fake import FakeProvider
 
+def safe_diagnostics(values):
+    if not isinstance(values,dict):return {}
+    numeric={'http_status','bytes_read','frames','frame_limit','wire_limit','response_limit','rpc_error_code','outer_length','content_wrapper_length'}
+    result={k:v for k,v in values.items() if k in numeric and type(v) is int and 0<=v<=67108864}
+    if values.get('rpc') in ('wXbhsf','rLM1Ne','hizoJc','QUERY_STREAM'):result['rpc']=values['rpc']
+    if values.get('stage') in ('SOURCE_DECODE','BROWSER_FETCH_OR_PROJECTION','RPC_ENVELOPE','CDP_EVALUATE'):result['stage']=values['stage']
+    return result
+
 class Gateway:
     def __init__(self, policy, fixture, control_dir, provider=None):
         self.policy=load_policy(policy)
@@ -63,7 +71,7 @@ class Gateway:
         data=raw.get('data')
         if not isinstance(data,dict):raise Rejected('PROVIDER_STRUCTURE_INVALID')
         kind=raw.get('provider_kind','SYNTHETIC_OFFLINE')
-        if kind not in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE','IPC_RESEARCH_SERVICE','GEMINI_HTTPS_UNVERIFIED','GEMINI_BROWSER_UNVERIFIED'}:raise Rejected('PROVIDER_STRUCTURE_INVALID')
+        if kind not in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE','IPC_RESEARCH_SERVICE','GEMINI_HTTPS_UNVERIFIED','GEMINI_BROWSER_UNVERIFIED','GEMINI_MANAGED_CDP_UNVERIFIED'}:raise Rejected('PROVIDER_STRUCTURE_INVALID')
         base=dict(status='OK',provider_status='ok',provider=kind,
             untrusted_research_data=True,verification_limitations=['No Google operation performed.'] if kind in {'SYNTHETIC_OFFLINE','GEMINI_SOURCE_DERIVED_MOCK','IPC_SYNTHETIC_SERVICE'} else ['Live transport result; provenance and semantic support not independently attested.'])
         if name==NAMES[0]:
@@ -151,6 +159,8 @@ class Gateway:
                     raw=self.provider.get_source_page(**checked) if hasattr(self.provider,'get_source_page') else self.provider.get_source(notebook_id=checked['notebook_id'],source_id=checked['source_id'])
                 else:raise Rejected('FORBIDDEN_OPERATION')
                 result=self.project(name,checked,raw)
+                diagnostics=safe_diagnostics(raw.get('diagnostics',{})) if isinstance(raw,dict) else {}
+                if diagnostics:result['diagnostics']=diagnostics
                 if self.disabled():raise Rejected('SERVICE_DISABLED')
             finally:self.busy.release()
             if len(json.dumps(result,ensure_ascii=False,allow_nan=False).encode())>MAX_RESPONSE:raise Rejected('PROVIDER_PROJECTION_LIMIT')
@@ -161,7 +171,7 @@ class Gateway:
             result=dict(status='ERROR',code=code,provider_status='NOT_ACCEPTED',
                 outcome=getattr(e,'outcome','UNKNOWN' if code in {'PROVIDER_TIMEOUT_OUTCOME_UNKNOWN','QUERY_OUTCOME_UNKNOWN'} else 'NOT_VERIFIED'))
             if hasattr(e,'diagnostics'):
-                result['diagnostics']={k:v for k,v in e.diagnostics.items() if k in ('http_status','bytes_read','frames','frame_limit','wire_limit','response_limit') and type(v) is int}
+                result['diagnostics']=safe_diagnostics(e.diagnostics)
             return result
         except Exception:
             return dict(status='ERROR',code='INTERNAL_ERROR',provider_status='NOT_ACCEPTED')

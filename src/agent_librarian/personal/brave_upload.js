@@ -11,7 +11,7 @@
     return u.href;
   };
   try{
-    if(location.origin!=='https://notebook.google.com'||location.pathname!=='/')fail('BRAVE_NOTEBOOK_HOMEPAGE_REQUIRED');
+    if(!['https://notebook.google.com','https://notebooklm.google.com'].includes(location.origin)||location.pathname!=='/')fail('BRAVE_NOTEBOOK_HOMEPAGE_REQUIRED');
     const config=Array.from(document.scripts).map(s=>s.textContent||'').filter(s=>s.includes('WIZ_global_data')).join('\n');
     const field=name=>{
       const values=new Set(Array.from(config.matchAll(new RegExp('"'+name+'"\\s*:\\s*("(?:[^"\\\\]|\\\\.)*")','g')),m=>JSON.parse(m[1])));

@@ -161,7 +161,7 @@ def main():
     args = parser.parse_args()
     wheel = Path(args.wheel).resolve()
     (ROOT/'state').mkdir(exist_ok=True)
-    report = {'milestone': 'API_SOURCE_INGESTION_AND_LARGE_NOTEBOOK', 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
+    report = {'milestone': 'MANAGED_CHROMIUM_AUTH_AND_RELIABILITY', 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
               'google_operations': 0, 'live_research_queries': 0, 'credentials': 'SYNTHETIC_METADATA_ONLY',
               'owner_configuration_changed': False}
     with tempfile.TemporaryDirectory(prefix='kn05-', dir=ROOT/'state') as temporary:
@@ -197,10 +197,11 @@ def main():
         assert source.read_bytes() == before and not install.state_dir.exists()
         resource_probe = r'''
 from pathlib import Path
-from agent_librarian.personal import source_admin
+from agent_librarian.personal import source_admin,managed_auth,managed_transport,managed_browser
 from agent_librarian.providers.gemini import parse_source
 folder=Path(source_admin.__file__).parent
-assert all((folder/name).is_file() for name in ('brave_upload.js','wire.js','brave_rpc.js'))
+assert all((folder/name).is_file() for name in ('brave_upload.js','wire.js','brave_rpc.js','brave_create.js'))
+assert managed_browser.install_browser()['status']=='DOWNLOAD_APPROVAL_REQUIRED'
 content='Synthetic passage. '*2000
 raw=[[['source-test'],'Title'],None,None,[[[0,len(content),content]]]]
 assert parse_source(raw,'source-test')['content']==content
@@ -210,6 +211,7 @@ assert parse_source(raw,'source-test')['content']==content
         report['packaged_ingestion_preview_without_authentication'] = True
         report['packaged_upload_and_wire_javascript_resources'] = True
         report['packaged_large_source_decoder'] = True
+        report['packaged_managed_auth_transport_and_download_preview'] = True
         state = PersonalState(install.state_dir, create=True)
         config = state.load(); config.update(authenticated=True, host='notebook.google.com'); state.save(config)
         write_private(state.path/'notebooks.json', {'account_id': config['account_id'], 'notebooks': [

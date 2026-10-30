@@ -29,7 +29,7 @@
   }
   async function project(reader,method) {
     const decoder=new TextDecoder('utf-8',{fatal:true}),encoder=new TextEncoder();
-    let pending='',total=0,count=0,first=true,marker=false,seen=0,selected=null,best=-1;
+    let pending='',total=0,count=0,first=true,marker=false,seen=0,selected=null,best=-1,bestCitations=-1;
     function line(value){
       if(encoder.encode(value).length>FRAME)fail('HTTP_FRAME_LIMIT');
       value=value.trim();
@@ -41,8 +41,11 @@
       structure(frame);if(!Array.isArray(frame))fail('UNIMPLEMENTED_SOURCE_GAP');
       for(const item of frame){
         if(!Array.isArray(item)||item.length<3||item[0]!=='wrb.fr')continue;
-        if(method!==null&&item[1]!==method)fail('PROVIDER_RPC_MISMATCH');
-        if(item[2]===null||(Array.isArray(item[5])&&item[5].length))fail(item[5]?.[0]===16?'AUTHENTICATION_EXPIRED':'PROVIDER_PROTOCOL_ERROR');
+        if(item[1]!==method)fail('PROVIDER_RPC_MISMATCH');
+        if(item[2]===null||(Array.isArray(item[5])&&item[5].length)){
+          const code=item[5]?.[0];
+          throw {librarianCode:code===16?'AUTHENTICATION_EXPIRED':Number.isInteger(code)?'GOOGLE_RPC_REJECTED':'PROVIDER_PROTOCOL_ERROR',rpc_error_code:code};
+        }
         if(typeof item[2]!=='string')fail('UNIMPLEMENTED_SOURCE_GAP');
         let inner;try{inner=JSON.parse(item[2]);}catch(_){fail('PROVIDER_PROTOCOL_ERROR');}
         structure(inner);
@@ -50,7 +53,8 @@
         else{
           const row=inner?.[0],info=row?.[4];
           if(!Array.isArray(inner)||!Array.isArray(row)||row.length<5||!Array.isArray(info)||info.length<5)fail('UNIMPLEMENTED_SOURCE_GAP');
-          if(info[info.length-1]===1){if(typeof row[0]!=='string')fail('PROVIDER_STRUCTURE_INVALID');if(row[0].length>best){selected=item;best=row[0].length;}}
+          if(info[info.length-1]===1){if(typeof row[0]!=='string')fail('PROVIDER_STRUCTURE_INVALID');const citations=Array.isArray(info[3])?info[3].length:0;
+            if(row[0].length>best||(row[0].length===best&&citations>=bestCitations)){selected=item;best=row[0].length;bestCitations=citations;}}
         }
       }
     }
@@ -62,7 +66,7 @@
         if(encoder.encode(pending).length>FRAME)fail('HTTP_FRAME_LIMIT');
       }
       pending+=decoder.decode();if(pending.trim())line(pending);
-      if(first||marker)fail('PROVIDER_PROTOCOL_ERROR');if(selected===null)fail('UNIMPLEMENTED_SOURCE_GAP');
+      if(marker)fail('HTTP_FRAME_TRUNCATED');if(first)fail('PROVIDER_PROTOCOL_ERROR');if(selected===null)fail('UNIMPLEMENTED_SOURCE_GAP');
       const result=")]}'\n"+JSON.stringify([selected])+'\n';
       if(encoder.encode(result).length>(method==='hizoJc'?FRAME:131072))fail('PROVIDER_PROJECTION_LIMIT');
       return {text:result,bytes_read:total,frames:count};

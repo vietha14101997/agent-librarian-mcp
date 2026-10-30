@@ -24,6 +24,9 @@ def registration_params(notebook_id,name):
 class SourceAdmin:
     def __init__(self,reader,notebook_id):
         self.reader=reader;self.nb=ident(notebook_id)
+        if hasattr(reader, 'bridge'):
+            self.bridge=reader.bridge('brave_upload.js')
+            return
         self.bridge=BraveTransport(reader.connection,reader.account_id,reader.expected_email,reader.notebooks,
             runner=reader.runner,disabled=reader.disabled)
         self.bridge.javascript=Path(__file__).with_name('brave_upload.js').read_text()
@@ -86,13 +89,23 @@ class SourceAdmin:
         return token
 
     def finalize(self,url,token,size):return self.execute('finalize',upload_url=url,token=token,size=size)
-    def close(self):self.reader.close();self.bridge.close()
+    def close(self):
+        try:self.bridge.close()
+        finally:self.reader.close()
 
 
 def browser_source_admin(state,notebook_id):
     from .storage import PersonalKeychainStore
     config=state.load()
     if not config['authenticated'] or (state.path/'DISABLED').exists():raise Rejected('AUTHENTICATION_REQUIRED')
+    from .managed_auth import selected,binding
+    if selected(state):
+        from .managed_transport import ManagedTransport
+        if notebook_id not in {b['notebook_id'] for b in state.inventory()['notebooks']}:raise Rejected('NOTEBOOK_NOT_DISCOVERED')
+        reader=ManagedTransport(state,binding(state),{notebook_id:{'sources':{}}},
+            disabled=lambda:not state.load()['authenticated'] or state.load()['generation']!=config['generation'] or (state.path/'DISABLED').exists())
+        try:return SourceAdmin(reader,notebook_id)
+        except BaseException:reader.close();raise
     connection=read_private(state.path/CONNECTION);saved=PersonalKeychainStore(state).load()
     if connection.get('status')!='BROWSER_DISCOVERY_VERIFIED':raise Rejected('BROWSER_CONNECTION_REQUIRED')
     if saved.account_id!=config['account_id'] or connection.get('account_id')!=config['account_id']:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')

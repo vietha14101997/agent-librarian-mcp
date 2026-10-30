@@ -151,7 +151,7 @@ def parse_query(stream,allowed_sources):
                 quoted=cited_text(detail)
                 if quoted:citation['cited_text']=quoted
                 citations.append(citation)
-            if best is None or len(answer)>len(best['answer']):best={'answer':answer,'citations':citations}
+            if best is None or len(answer)>len(best['answer']) or len(answer)==len(best['answer']) and len(citations)>=len(best['citations']):best={'answer':answer,'citations':citations}
     # Unlike upstream's fallback, never represent a thinking-only response as an answer.
     if best is None:raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
     return best
@@ -169,7 +169,7 @@ class GeminiResearchProvider:
         if nb not in self.notebooks:raise Rejected('NOTEBOOK_NOT_ALLOWED')
 
     def _result(self,data):
-        return {'account_id':self.capability.account_id,'status':'ok','provider_kind':getattr(self.transport,'provider_kind','GEMINI_SOURCE_DERIVED_MOCK'),
+        return {'account_id':self.capability.account_id,'status':'ok','diagnostics':getattr(self.transport,'diagnostics',{}),'provider_kind':getattr(self.transport,'provider_kind','GEMINI_SOURCE_DERIVED_MOCK'),
             'data':data,'verification_status':'SOURCE_NOT_VERIFIED','limitations':['Source-derived adapter; live Google compatibility and semantic citation support unverified.']}
 
     def list_notebooks(self):
@@ -190,7 +190,7 @@ class GeminiResearchProvider:
         params=[[[[sid]] for sid in source_ids],query,None,[2,None,[1]],str(uuid.uuid4())]
         try:result=parse_query(self.transport.request(ReadRequest('stream',QUERY_ENDPOINT,f'/notebook/{notebook_id}',params)),source_ids)
         except Rejected as e:
-            if getattr(self.transport,'provider_kind','') in ('GEMINI_HTTPS_UNVERIFIED','GEMINI_BROWSER_UNVERIFIED'):
+            if getattr(self.transport,'provider_kind','') in ('GEMINI_HTTPS_UNVERIFIED','GEMINI_BROWSER_UNVERIFIED','GEMINI_MANAGED_CDP_UNVERIFIED'):
                 e.outcome='UNKNOWN'
                 if e.code=='AUTHENTICATION_EXPIRED':self.transport.invalidate_auth()
             raise
@@ -200,7 +200,14 @@ class GeminiResearchProvider:
         self._book(notebook_id)
         if ident(source_id) not in self.notebooks[notebook_id]['sources']:raise Rejected('SOURCE_NOT_ALLOWED')
         self._identity()
-        source=parse_source(self.transport.request(ReadRequest('rpc',SOURCE_RPC,'/',[[source_id],[2],[2]])),source_id)
+        raw=self.transport.request(ReadRequest('rpc',SOURCE_RPC,'/',[[source_id],[2],[2]]))
+        try:source=parse_source(raw,source_id)
+        except Rejected as error:
+            # Shape-only evidence for the pilot's unreadable sources; no body, IDs or text.
+            error.diagnostics={**getattr(self.transport,'diagnostics',{}),'stage':'SOURCE_DECODE',
+                'outer_length':len(raw) if isinstance(raw,list) else 0,
+                'content_wrapper_length':len(raw[3]) if isinstance(raw,list) and len(raw)>3 and isinstance(raw[3],list) else 0}
+            raise
         return self._result({'notebook_id':notebook_id,**source})
 
     def close(self):self.transport.close()

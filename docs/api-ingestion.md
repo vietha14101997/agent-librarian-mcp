@@ -1,8 +1,8 @@
 # CLI file ingestion and bounded notebook research
 
-This release adds a narrow consumer-file import CLI. It reuses the existing
-macOS Brave account binding and pinned Notebook homepage, with authenticated
-in-page API requests. It requires no file picker, DevTools procedure, Drive,
+This release adds a narrow consumer-file import CLI. It uses the selected managed Chromium/CDP session, or the retained
+Brave compatibility account binding, with authenticated in-page API requests.
+[Managed authentication](managed-chromium.md) documents selection and lifecycle. It requires no file picker, DevTools procedure, Drive,
 cookie export or new MCP mutation tool. Upload compatibility is **offline tested;
 live validation is pending**. Existing installations are not automatically updated.
 
@@ -46,7 +46,7 @@ The reviewed upload sequence is:
 Upstream uses cookie-authenticated HTTP. Agent Librarian instead retains the
 existing in-page credentials, account attestation and CSRF/session/build form
 fields; tokens are never exported. Returned session URLs are accepted only on
-`https://notebook.google.com/upload/_/`, without credentials or fragments.
+the active reviewed Notebook origin at `/upload/_/`, without credentials or fragments.
 Cross-origin session URLs fail closed. Only the default consumer-account slot is
 supported. No Enterprise, URL, Drive, replacement or deletion API is added.
 Upstream's mutation retry/auth-recovery mechanisms are deliberately not used.

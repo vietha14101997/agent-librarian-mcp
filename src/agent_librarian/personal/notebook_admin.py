@@ -22,7 +22,7 @@ class NotebookAdmin(BraveTransport):
     """Only discovery/create; not a ResearchProvider and never registered as MCP."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.javascript = Path(__file__).with_name('brave_create.js').read_text()
+        self.javascript = Path(__file__).with_name('brave_create.js').read_text().replace('__LIBRARIAN_WIRE__', Path(__file__).with_name('wire.js').read_text())
 
     def request(self, request):
         if request != ReadRequest('rpc', LIST_RPC, '/', [None, 1, None, [2]]):
@@ -41,6 +41,12 @@ class NotebookAdmin(BraveTransport):
 
 
 def browser_admin(state):
+    from .managed_auth import selected, binding
+    if selected(state):
+        from .managed_transport import ManagedNotebookAdmin
+        if not state.load()['authenticated'] or (state.path / 'DISABLED').exists():
+            raise Rejected('AUTHENTICATION_REQUIRED')
+        return ManagedNotebookAdmin(state, binding(state), {}, disabled=lambda: (state.path / 'DISABLED').exists())
     from .storage import PersonalKeychainStore
     config = state.load()
     if not config['authenticated']:

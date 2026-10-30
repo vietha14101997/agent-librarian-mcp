@@ -37,9 +37,13 @@ def prepare(state,store=None,sender=None,notebook_ids=None):
     if not c['authenticated']:raise Rejected('AUTHENTICATION_REQUIRED')
     if not book and notebook_ids is None:raise Rejected('NOTEBOOK_SELECTION_REQUIRED')
     if (state.path/'DISABLED').exists():raise Rejected('SERVICE_DISABLED')
-    store=store if store is not None else PersonalKeychainStore(state)
-    s=store.load()
-    if s.account_id!=c['account_id'] or s.host!=c['host']:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')
+    from .managed_auth import selected,binding
+    managed=selected(state)
+    s=None
+    if not managed:
+        store=store if store is not None else PersonalKeychainStore(state)
+        s=store.load()
+        if s.account_id!=c['account_id'] or s.host!=c['host']:raise Rejected('ACCOUNT_IDENTITY_MISMATCH')
     books=[book]
     if notebook_ids is not None:
         inventory=state.inventory()
@@ -51,12 +55,16 @@ def prepare(state,store=None,sender=None,notebook_ids=None):
     if any(not info['sources'] for info in notebooks.values()):raise Rejected('SELECTED_NOTEBOOK_HAS_NO_SOURCES')
     policy={'version':1,'enabled':True,'account_id':c['account_id'],'notebooks':notebooks,'query_max_chars':2000,'timeout_seconds':30}
     if notebook_ids is None:write_private(state.path/'research-policy.json',policy)
-    sessions=seed_manager(store,s)
+    sessions=seed_manager(store,s) if not managed else None
     def disabled():
         latest=state.load()
         return not latest['authenticated'] or latest['generation']!=c['generation'] or (state.path/'DISABLED').exists()
     from .brave_transport import CONNECTION,BraveTransport
-    if (state.path/CONNECTION).exists():
+    if managed:
+        from .managed_transport import ManagedTransport
+        transport=ManagedTransport(state,binding(state),notebooks,disabled=disabled)
+        sessions=transport
+    elif (state.path/CONNECTION).exists():
         from .state import read_private
         connection=read_private(state.path/CONNECTION)
         if connection.get('status')!='BROWSER_DISCOVERY_VERIFIED' or connection.get('account_id')!=c['account_id']:
@@ -65,7 +73,7 @@ def prepare(state,store=None,sender=None,notebook_ids=None):
         sessions=transport
     else:transport=GeminiHTTPS(sessions,notebooks,timeout=30,sender=sender,disabled=disabled,validate_discovery=False)
     backend=GeminiResearchProvider(transport,AccountCapability(c['account_id']),notebooks)
-    provider=PersonalProvider(state,SecretConfinement(backend,lambda:tuple(s.secrets())+tuple(sessions.secrets())),sessions,c['generation'],transport.provider_kind,notebooks)
+    provider=PersonalProvider(state,SecretConfinement(backend,lambda:(tuple(s.secrets()) if s else ())+tuple(sessions.secrets())),sessions,c['generation'],transport.provider_kind,notebooks)
     return (state.path/'research-policy.json' if notebook_ids is None else policy),provider
 
 def status(state,store,show_account=False):

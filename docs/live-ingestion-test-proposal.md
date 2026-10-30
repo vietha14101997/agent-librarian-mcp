@@ -2,19 +2,53 @@
 
 **Prepared only. No live upload or research query has been run for this change.**
 
-Use the existing notebook `82de00a1-7a2a-4216-baea-861a96aed218` and its existing
-OSAgent knowledge-pilot project mapping: `workspace/knowledge-pilots/osagent-library-live-test` within the existing OSAgentProjects root. Do not recreate the notebook or reupload,
-rename, replace or delete any of its original 53 sources. Keep the installed
-v0.5.0 runtime/authentication unchanged; use a temporary v0.7.0 stdio process with
-the exact pilot `--project` and recorded installation/state paths for the test.
-The checkout wheel has not been activated as the shared installation.
+Use the existing notebook `82de00a1-7a2a-4216-baea-861a96aed218` and pilot
+project `workspace/knowledge-pilots/osagent-library-live-test` within the existing
+workspace. Keep all 53 original sources and the installed runtime/configuration.
+Use the v0.8 development interpreter with a **separate** user-local test state,
+separate test mapping home and dedicated managed Chromium profile. Do not copy
+cookies, authenticated profiles or Keychain contents from the existing pilot.
 
-Approval would cover exactly:
+First, the owner completes interactive Google login in the managed window. Login
+includes one authenticated discovery RPC to prove the session. Preserve the profile
+and verify reuse from an independent process. This sign-in step grants no upload,
+reconciliation import execution, or research question authorization.
+
+**After login, request one approval for the exact A–G set below.** That approval
+must explicitly include the one disposable upload (D), duplicate/reconciliation
+execution (E), and the exact new history-persisting question (F). If the owner
+approves only a subset, execute only that subset. No E or F before specific approval.
+
+A–G bounded verification set:
+
+A. Verify the bound Google account and notebook discovery (one health check).
+B. Read these three previously failing source IDs, following source continuation
+   offsets until null; retain bounded shape/stage/byte/frame diagnostics:
+
+   | Original | Source ID |
+   |---|---|
+   | execution-receipt schema Markdown | `0f36dab2-6ba6-4a45-bfdd-1a7d966adf19` |
+   | execution-receipt schema JSON adapter | `8a52a037-b468-4f3a-8a34-3f88ff57aa2e` |
+   | Library manifest JSON adapter | `699be9a7-0248-435a-b051-bde39bf09cbd` |
+
+   These IDs come from the original local pilot acceptance report, not new Google
+   reads. Compare source ordering and relevant text with the original documents.
+C. Read the 53-source notebook metadata, retain its baseline ID set, and confirm
+   the four-tool MCP and exact pilot mapping.
+D. Upload the single disposable source described in step 2 below once.
+E. Perform read-only processing reconciliation, then repeat the identical approved
+   import once to prove it reuses the ready journal ID without another upload.
+F. Grant one exact-question permit and dispatch the question in step 5 once,
+   restricted to the new returned source ID. Never replay an UNKNOWN result.
+G. Check the returned answer and actual citation against the new source text;
+   confirm all original 53 IDs remain. Retain receipts; do not delete the source.
+
+Execution details:
 
 1. Read current notebook metadata; retain all 53 original source IDs as baseline.
    Confirm the new MCP advertises exactly four research tools and the mapping
-   resolves only the existing notebook. If Brave transport is unavailable, stop;
-   no cookie extraction, browser/profile recreation or silent login recovery.
+   resolves only the existing notebook. If managed Chromium or authentication is unavailable, stop;
+   no personal-browser access, profile reset, or alternative transport dispatch.
 2. Upload one new disposable file, once, through `sources add --approve`:
    `examples/ingestion/agent-librarian-ingestion-smoke-20261030.md`.
    Its exact content is committed in the review bundle. Size: **230 bytes**.
@@ -44,7 +78,7 @@ Approval would cover exactly:
 6. Save sanitized request-kind/frame/byte counters and receipts, source IDs,
    preserved original-ID comparison, and a PASS/PARTIAL/BLOCKED report. Retain
    the disposable source and its import receipt; deletion is outside this
-   proposal. Restore the existing pinned homepage if necessary.
+   proposal. Close only the managed test browser; retain its dedicated profile.
 
 The prior OSAgent authority-classification question with UNKNOWN outcome is
 explicitly excluded and must never be replayed by this test. This proposal does

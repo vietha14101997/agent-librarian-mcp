@@ -254,3 +254,23 @@ mutation retries and auth recovery are not reused. The existing upstream MIT
 notice applies to these adaptations. The incremental framing and journal code
 are local implementations. See `docs/api-ingestion.md` for exact source links and
 the inaccessible second reference; no code was taken from that listing.
+
+## KN-OSS-08 managed Chromium/CDP
+
+Current upstream was re-inspected on 2026-10-30 at the same revision
+`8ac9728ec5b128b05077e9d7c4c8bb11b5830c61`. Byte comparisons of current main
+against pinned sources and source hashes are recorded in review evidence.
+`personal/managed_browser.py`, `managed_auth.py` and `managed_transport.py`
+selectively apply dedicated-profile ownership, CDP lifecycle, headless reuse,
+functional discovery validation and browser-context fetch patterns from upstream
+`utils/cdp.py`, `core/auth.py`, `core/cdp_transport.py` and `core/base.py`.
+The existing Jacob Ben David MIT attribution and complete notice above apply.
+The upload/source/conversation layouts were re-reviewed in `core/sources.py` and
+`core/conversation.py`; no upstream runtime or unrestricted APIs are imported.
+Local changes keep cookies in Chromium, use OS-assigned loopback ports, restrict
+health retries, preserve mutation/query replay barriers, stream bounded projection
+and retain citations on equal-length final answers.
+
+Chromium is an independently downloaded executable dependency, never bundled in
+the wheel or review archive. Its distribution carries its own licenses/notices.
+Playwright remains the pinned optional Apache-2.0 client dependency.

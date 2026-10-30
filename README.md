@@ -32,15 +32,27 @@ An existing Codex receipt-based installer remains available through
 
 ## Connect
 
-Reuse an existing installation and its recorded state paths. `librarian auth status`
-and `librarian browser status` inspect cached metadata offline. The current live
-transport is an opt-in **macOS Brave pilot**, using a selected signed-in Notebook
-homepage and an existing dedicated Keychain account binding. With owner consent,
-`librarian browser connect --consent-discovery` refreshes that account's inventory.
-It does not grant project research access. See [connection and first-install
-limitations](docs/personal-local.md); a new machine may require explicit owner login
-and account setup. Missing browser/authentication is a blocker, not a reason to
-silently switch accounts or extract browser credentials.
+New connections use a dedicated persistent Chromium profile and CDP. With approval
+for the executable dependency, install the browser and sign in once:
+
+```sh
+uv sync --locked --extra personal
+librarian browser install                 # Download preview
+librarian browser install --approve-download
+librarian auth login --consent-discovery
+librarian auth check
+```
+
+`auth status` reads cached state offline. `auth check` and `auth refresh` perform
+bounded authenticated discovery and recover page metadata without repeating a
+research query. Profiles live in user application data outside the repository;
+cookies stay in Chromium. The browser can close between Agent sessions.
+[Authentication, lifecycle and transport details](docs/managed-chromium.md).
+
+Existing Brave installations retain their selected compatibility adapter and
+protected account binding. Use a separate state for acceptance testing and obtain
+approval before migrating an active runtime. No personal browser profile is used
+by the new default. [Legacy Brave guide](docs/personal-local.md).
 
 ## Onboard a project
 
@@ -71,12 +83,12 @@ project; linking verifies the saved effective mapping.
 
 ## Local source ingestion
 
-The v0.7 CLI adds `sources plan`, `add`, `import`, `status`, and `check` using the
-existing browser-backed consumer API. Preview locally; execute only an explicitly
+The CLI provides `sources plan`, `add`, `import`, `status`, and `check` using the
+selected browser-backed consumer API. Preview locally; execute only an explicitly
 approved file/plan. Durable journals preserve returned IDs and block uncertain
 mutation replays. No file picker, Drive API or new MCP mutation tool is needed.
 [Protocol findings, commands and limits](docs/api-ingestion.md).
-[Offline validation](docs/ingestion-validation.md) and
+[Current offline validation](docs/managed-validation.md) and [v0.7 evidence](docs/ingestion-validation.md) and
 [the one-source live proposal](docs/live-ingestion-test-proposal.md) record acceptance scope.
 Live upload compatibility remains pending the separate one-source acceptance test.
 
@@ -95,9 +107,10 @@ query or creation outcome. Creation is CLI-only and is absent from research MCP.
 ## Limitations and validation
 
 The package and stdio contract are agent-independent; native registration must be
-verified in each host. Live authentication/research remains the macOS Brave pilot;
-Unix offline use is supported by the filesystem design, while native Windows use
-is not supported. Offline status does not prove that a browser tab is open or a
+verified in each host. The managed CDP path has native macOS offline tests using synthetic responses;
+real Google login, upload processing and the large-Notebook pilot still require
+separate live acceptance. Unix filesystem behavior has offline coverage; native
+Windows use is untested and unsupported. Offline status does not prove that a browser tab is open or a
 session is unexpired. New creation has synthetic coverage only and uses an
 unofficial upstream wire contract. Failed or uncertain creation retains an
 operation receipt and blocks replay; recover by explicitly inspecting/selecting
@@ -111,7 +124,7 @@ uv sync --locked
 .venv/bin/python -I -B tests/run.py --output state/test-results.json
 uv build --wheel
 .venv/bin/python -I -B scripts/verify_installation.py \
-  --wheel dist/agent_librarian_mcp-0.7.0-py3-none-any.whl --output state/package-results.json
+  --wheel dist/agent_librarian_mcp-0.8.0-py3-none-any.whl --output state/package-results.json
 ```
 
 The acceptance script uses temporary synthetic state. Optional `--codex` checks

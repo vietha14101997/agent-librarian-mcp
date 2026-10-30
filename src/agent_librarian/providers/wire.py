@@ -51,7 +51,8 @@ def frames(chunks):
         if pending.strip():
             value=decode_line(pending)
             if value is not None:yield value
-        if first or marker:raise Rejected('PROVIDER_PROTOCOL_ERROR')
+        if marker:raise Rejected('HTTP_FRAME_TRUNCATED')
+        if first:raise Rejected('PROVIDER_PROTOCOL_ERROR')
     except UnicodeError:
         error=Rejected('PROVIDER_PROTOCOL_ERROR');error.diagnostics={'bytes_read':total,'frames':count,'frame_limit':FRAME_BYTES,'wire_limit':WIRE_BYTES};raise error from None
     except Rejected as error:
@@ -87,13 +88,16 @@ def compact_rpc(data,method):
 
 def project_response(chunks,method):
     """Process bounded frames and return only one useful frame across the bridge."""
-    selected=None;seen=0;best=-1
+    selected=None;seen=0;best=-1;best_citations=-1
     for frame in frames(chunks):
         for item in frame:
             if not isinstance(item,list) or len(item)<3 or item[0]!='wrb.fr':continue
-            if method is not None and item[1]!=method:raise Rejected('PROVIDER_RPC_MISMATCH')
+            if item[1]!=method:raise Rejected('PROVIDER_RPC_MISMATCH')
             if item[2] is None or len(item)>5 and isinstance(item[5],list) and item[5]:
-                raise Rejected('AUTHENTICATION_EXPIRED' if len(item)>5 and item[5] and item[5][0]==16 else 'PROVIDER_PROTOCOL_ERROR')
+                code=item[5][0] if len(item)>5 and isinstance(item[5],list) and item[5] else None
+                error=Rejected('AUTHENTICATION_EXPIRED' if code==16 else 'GOOGLE_RPC_REJECTED' if type(code) is int else 'PROVIDER_PROTOCOL_ERROR')
+                error.diagnostics={'stage':'RPC_ENVELOPE',**({'rpc_error_code':code} if type(code) is int else {})}
+                raise error
             if not isinstance(item[2],str):raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
             try:inner=strict_json(item[2])
             except (ValueError,RecursionError):raise Rejected('PROVIDER_PROTOCOL_ERROR') from None
@@ -108,7 +112,9 @@ def project_response(chunks,method):
                 if not isinstance(info,list) or len(info)<5:raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
                 if type(info[-1]) is int and info[-1]==1:
                     if not isinstance(row[0],str):raise Rejected('PROVIDER_STRUCTURE_INVALID')
-                    if len(row[0])>best:selected=item;best=len(row[0])
+                    citations=len(info[3]) if isinstance(info[3],list) else 0
+                    if len(row[0])>best or len(row[0])==best and citations>=best_citations:
+                        selected=item;best=len(row[0]);best_citations=citations
     if selected is None:raise Rejected('UNIMPLEMENTED_SOURCE_GAP')
     try:result=(")]}'\n"+json.dumps([selected],ensure_ascii=False)+'\n').encode()
     except UnicodeError:raise Rejected('PROVIDER_PROTOCOL_ERROR') from None

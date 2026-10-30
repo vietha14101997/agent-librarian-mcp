@@ -8,7 +8,7 @@
   const fail = code => { throw {librarianCode: code}; };
   const key = '__agentLibrarianRequests';
   try {
-    if (location.origin !== 'https://notebook.google.com' || location.pathname !== '/') fail('BRAVE_NOTEBOOK_HOMEPAGE_REQUIRED');
+    if (!['https://notebook.google.com', 'https://notebooklm.google.com'].includes(location.origin) || location.pathname !== '/') fail('BRAVE_NOTEBOOK_HOMEPAGE_REQUIRED');
     const pending = globalThis[key] || (globalThis[key] = new Map());
     if (input.action === 'poll') {
       const entry = pending.get(input.id);
@@ -65,7 +65,7 @@
         total=projected.bytes_read;
         entry.result={status:'DONE',http_status:response.status,text:projected.text,bytes_read:total,frames:projected.frames};
       } catch (error) {
-        entry.result = {status: 'ERROR', code: error?.librarianCode || 'BROWSER_OUTCOME_UNKNOWN', http_status: status, bytes_read: error?.bytes_read??total, frames:error?.frames??0, frame_limit:error?.frame_limit??2097152, wire_limit:responseLimit};
+        entry.result = {status: 'ERROR', code: error?.librarianCode || 'BROWSER_OUTCOME_UNKNOWN', rpc_error_code:error?.rpc_error_code, http_status: status, bytes_read: error?.bytes_read??total, frames:error?.frames??0, frame_limit:error?.frame_limit??2097152, wire_limit:responseLimit};
       } finally { clearTimeout(timer); }
     })();
     return reply({status: 'DISPATCHED'});

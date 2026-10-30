@@ -78,20 +78,21 @@ def parser():
     c.add_argument('--relative-names',action='store_true',help='Encode relative paths with __ to avoid basename collisions')
     c.add_argument('--json-as-markdown',action='store_true',help='Wrap unchanged JSON bytes in a Markdown code fence')
     c.add_argument('--approve',action='store_true',help='Approve mutation for this exact reviewed file/plan; default is preview')
-    c=sub.add_parser('auth',help='Explicit Personal Local Brave login and Keychain session')
+    c=sub.add_parser('auth',help='Dedicated Chromium login and bounded authentication health')
     auth=c.add_subparsers(dest='auth_action',required=True)
-    for action in ('login','status','logout'):
+    for action in ('login','status','check','refresh','logout'):
         a=auth.add_parser(action);a.add_argument('--state-dir');a.add_argument('--show-account',action='store_true')
-        if action=='login':a.add_argument('--method',choices=('existing-brave','managed-brave'));a.add_argument('--brave-profile');a.add_argument('--consent-existing-session',action='store_true');a.add_argument('--consent-discovery',action='store_true');a.add_argument('--timeout',type=int,default=600);a.add_argument('--notify',action=argparse.BooleanOptionalAction,default=True)
+        if action=='login':a.add_argument('--method',choices=('managed-chromium','existing-brave','managed-brave'));a.add_argument('--brave-profile');a.add_argument('--consent-existing-session',action='store_true');a.add_argument('--consent-discovery',action='store_true');a.add_argument('--timeout',type=int,default=600);a.add_argument('--notify',action=argparse.BooleanOptionalAction,default=True)
     c=sub.add_parser('notebooks',help='Cached discovered inventory and explicit notebook selection')
     books=c.add_subparsers(dest='notebook_action',required=True)
     for action in ('list','select'):
         a=books.add_parser(action);a.add_argument('--state-dir')
         if action=='select':a.add_argument('--notebook-id',required=True)
-    c=sub.add_parser('browser',help='Opt-in native Brave connection; no debugger or cookie export')
+    c=sub.add_parser('browser',help='Managed Chromium lifecycle or explicit Brave compatibility connection')
     browser=c.add_subparsers(dest='browser_action',required=True)
-    for action in ('connect','status'):
+    for action in ('connect','status','start','close','install'):
         a=browser.add_parser(action);a.add_argument('--state-dir')
+        if action=='install':a.add_argument('--approve-download',action='store_true',help='Approve downloading executable Chromium components after reviewing the preview')
         if action=='connect':
             a.add_argument('--consent-discovery',action='store_true');a.add_argument('--active-tab',action='store_true',help='Explicitly replace a previous pinned Notebook tab')
     c=sub.add_parser('research',help='Four restricted Personal Local operations')

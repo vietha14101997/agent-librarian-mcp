@@ -1,4 +1,7 @@
-# Personal Local native Brave pilot
+# Legacy Personal Local native Brave pilot
+
+New states default to [managed Chromium/CDP](managed-chromium.md). This page
+describes the retained compatibility adapter; it is not the new installation flow.
 
 KN-OSS-04 completed real notebook discovery, one successful MCP research query and
 three cited-source reads through the selected existing Brave Notebook session.
